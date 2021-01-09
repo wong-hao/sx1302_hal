@@ -9,3 +9,5 @@ util_chip_id/chip_id
 util_net_downlink/net_downlink
 util_boot/boot
 util_spectral_scan/spectral_scan
+
+sx1302_hal.si4project/
