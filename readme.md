@@ -73,6 +73,8 @@ local CSV file.
 Please refer to the readme.md file located in the util_net_downlink directory
 for more details.
 
+[util_net_downlink](https://github.com/Lora-net/sx1302_hal/tree/master/util_net_downlink) (sx1302) = [util_sink](https://github.com/Lora-net/packet_forwarder/tree/master/util_sink) + [util_ack](https://github.com/Lora-net/packet_forwarder/tree/master/util_ack) + [util_tx_test](https://github.com/Lora-net/packet_forwarder/tree/master/util_tx_test) (sx1301)
+
 ### 2.3. util_chip_id ###
 
 This utility configures the SX1302 to be able to retrieve its EUI. It can then
