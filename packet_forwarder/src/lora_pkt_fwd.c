@@ -1609,7 +1609,9 @@ int main(int argc, char ** argv)
     hints.ai_socktype = SOCK_DGRAM; //UDP
 
     /* look for server address w/ upstream port */
-    i = getaddrinfo(serv_addr, serv_port_up, &hints, &result); //serv_addr、serv_port_up由parse_gateway_configuration得出；从hints读取信息存储到result
+    i = getaddrinfo(serv_addr, serv_port_up, &hints, &result); 
+	//serv_addr、serv_port_up由parse_gateway_configuration得出；从hints读取信息存储到result
+	//因为IP + port -> socket
     if (i != 0) {
         MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
         exit(EXIT_FAILURE);
@@ -1617,7 +1619,7 @@ int main(int argc, char ** argv)
 
     /* try to open socket for upstream traffic */
     for (q=result; q!=NULL; q=q->ai_next) { //q指向result，q的属性都是上面getaddrinfo得到的；因为一个域名可能不止一个IP地址，所以，需要遍历res中的next，如下，是否还有下一个节点
-        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol); //获得套接字sock_up
+        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol); //创建套接字sock_up，ai_protocol默认为0自动推演
         if (sock_up == -1) continue; /* try next field */
         else break; /* success, get out of loop */ //得到sock_up后跳出for循环，没有必要循环到结束条件q==NULL
     }
@@ -1626,14 +1628,15 @@ int main(int argc, char ** argv)
         i = 1;
         for (q=result; q!=NULL; q=q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
+            //与getaddrinfo两级反转: socket -> IP + port
+		    MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
         }
         exit(EXIT_FAILURE); //异常退出程序
     }
 
-    /* connect so we can send/receive packet with the server only */ //连接上行socket
-    i = connect(sock_up, q->ai_addr, q->ai_addrlen); //q为for循环break出时的值
+    /* connect so we can send/receive packet with the server only */ 
+    i = connect(sock_up, q->ai_addr, q->ai_addrlen); //连接上行socket；q为for循环break出时的值
     if (i != 0) {
         MSG("ERROR: [up] connect returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
@@ -1847,7 +1850,7 @@ int main(int argc, char ** argv)
 
         /* overwrite with reference coordinates if function is enabled */ //fake gps
         if (gps_fake_enable == true) {
-            cp_gps_coord = reference_coord;
+            cp_gps_coord = reference_coord; //采用global.config里的reference_coord作为fake gps location
         }
 
         /* display a report */
