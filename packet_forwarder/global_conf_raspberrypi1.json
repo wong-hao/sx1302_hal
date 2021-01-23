@@ -89,9 +89,10 @@
         /* GPS configuration */
         //"gps_tty_path": "/dev/ttyS0",
         /* GPS reference coordinates */
-        //"ref_latitude": 0.0,
-        //"ref_longitude": 0.0,
-        //"ref_altitude": 0,
+        "ref_latitude": 31.268575,
+        "ref_longitude": 120.746857,
+        "ref_altitude": 100,
+        "fake_gps": true,
         /* Beaconing parameters */
         "beacon_period": 0,
         "beacon_freq_hz": 869525000,
