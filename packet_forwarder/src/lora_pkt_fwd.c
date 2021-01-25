@@ -2099,7 +2099,7 @@ void thread_up(void) { //PUSH_DATA packet
             p = &rxpkt[i]; //rxpkt[i]接收到的第i个数据包datagram
 
             /* Get mote information from current packet (addr, fcnt) */ //mote information：end device的信息
-            /* FHDR - DevAddr */ //由base64解码器看出是从FHDR里获得DevAddr
+            /* FHDR - DevAddr */ //由在线解码器看出是从FHDR里获得DevAddr
             if (p->size >= 8) {
                 mote_addr  = p->payload[1];
                 mote_addr |= p->payload[2] << 8; //按位异或
@@ -2147,7 +2147,7 @@ void thread_up(void) { //PUSH_DATA packet
 
 			//只有可以转发的数据包才能出现在json up消息里
             meas_up_pkt_fwd += 1; //RF packets forwarded
-            meas_up_payload_byte += p->size; //RF packets forwarded size: base64解码得到的LoRa包结构中的PHYPayload大小
+            meas_up_payload_byte += p->size; //RF packets forwarded size: 在线解码得到的LoRa包结构中的PHYPayload大小
             pthread_mutex_unlock(&mx_meas_up);
             printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
 
@@ -2233,7 +2233,7 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-            /* Packet status, 9-10 useful chars */ //CRC
+            /* Packet status, 9-10 useful chars */ //CRC；通过接收检测程序可以发现可以通过p->crc输出crc16具体值例如0xD228
             switch (p->status) {
                 case STAT_CRC_OK:
                     memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":1", 9);
@@ -2403,7 +2403,7 @@ void thread_up(void) { //PUSH_DATA packet
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
             buff_index += 9;
-			//rxpkt->payload使用base64加密
+			//rxpkt->payload使用base64加密: PHYPayload -> data
             j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
             if (j>=0) {
                 buff_index += j;
