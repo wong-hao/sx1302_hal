@@ -2098,11 +2098,12 @@ void thread_up(void) { //PUSH_DATA packet
         for (i = 0; i < nb_pkt; ++i) {
             p = &rxpkt[i]; //rxpkt[i]接收到的第i个数据包datagram
 
+            //由接收测试与在线解码比对可得到p->payload是PHYPayload，只从在线解码也可以得到
             /* Get mote information from current packet (addr, fcnt) */ //mote information：end device的信息
             /* FHDR - DevAddr */ //mote_addr: DevAddr[4 bytes]
 		    //字节序：Little Endian to Big Endian
             if (p->size >= 8) {
-                mote_addr  = p->payload[1]; //由接收测试与在线解码比对可得到p->payload是PHYPayload，只从在线解码也可以得到
+                mote_addr  = p->payload[1];  //从PHYPayload的第二个字节开始，也就是MACPayload开始
                 mote_addr |= p->payload[2] << 8; 
                 mote_addr |= p->payload[3] << 16;
                 mote_addr |= p->payload[4] << 24;
