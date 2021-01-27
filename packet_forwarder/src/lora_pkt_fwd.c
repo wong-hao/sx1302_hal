@@ -2030,7 +2030,7 @@ void thread_up(void) { //PUSH_DATA packet
     bool send_report = false;
 
     /* mote info variables */ //End Device
-    uint32_t mote_addr = 0;
+    uint32_t mote_addr = 0; //unsigned int 
     uint16_t mote_fcnt = 0;
 
     /* set upstream socket RX timeout */ //接收时限套接字超时
@@ -2099,13 +2099,14 @@ void thread_up(void) { //PUSH_DATA packet
             p = &rxpkt[i]; //rxpkt[i]接收到的第i个数据包datagram
 
             /* Get mote information from current packet (addr, fcnt) */ //mote information：end device的信息
-            /* FHDR - DevAddr */ //由在线解码器看出是从FHDR里获得DevAddr
+            /* FHDR - DevAddr */ //mote_addr: DevAddr[4 bytes]
+		    //字节序：Little Endian to Big Endian
             if (p->size >= 8) {
-                mote_addr  = p->payload[1];
-                mote_addr |= p->payload[2] << 8; //按位异或
+                mote_addr  = p->payload[1]; //由接收测试与在线解码比对可得到p->payload是PHYPayload，只从在线解码也可以得到
+                mote_addr |= p->payload[2] << 8; 
                 mote_addr |= p->payload[3] << 16;
                 mote_addr |= p->payload[4] << 24;
-                /* FHDR - FCnt */ //从FHDR里获得FCnt: 终端节点重新入网/启动后重置，且数值由节点发送次数决定，与网关无关
+                /* FHDR - FCnt */ //mote_fcnt: FCnt[2 bytes]: 终端节点重新入网/启动后重置，且数值由节点发送次数决定，与网关无关
                 mote_fcnt  = p->payload[6];
                 mote_fcnt |= p->payload[7] << 8;
             } else {
@@ -2403,7 +2404,7 @@ void thread_up(void) { //PUSH_DATA packet
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
             buff_index += 9;
-			//rxpkt->payload使用base64加密: PHYPayload -> data
+			//rxpkt->payload使用base64加密: p->payload (PHYPayload) 到 data
             j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
             if (j>=0) {
                 buff_index += j;
