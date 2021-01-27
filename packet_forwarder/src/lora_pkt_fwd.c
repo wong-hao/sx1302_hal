@@ -2406,6 +2406,14 @@ void thread_up(void) { //PUSH_DATA packet
             buff_index += 9;
 			//rxpkt->payload使用base64加密: p->payload (PHYPayload) 到 data
             j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
+            
+            //printf("PHYPayload: "); //copy接收测试以确定发送的p->payload确实是PHYPayload (多了10bytes不知道为什么)
+            //for (j = 0; j < p->size; j++) {
+            //    printf("%02X ", p->payload[j]);
+            //}
+            //printf("\n");
+            
+            
             if (j>=0) {
                 buff_index += j;
             } else {
