@@ -2220,7 +2220,7 @@ void thread_up(void) { //PUSH_DATA packet
 			char time0[100] = "\"";
 			char time1[100];
 			char time2[100];
-			char time3[100] = ".439128783Z\""; //毫秒部分弄个固定值，反正不重要，也得不到
+			char time3[100] = ".000000000Z\""; //毫秒部分弄个固定值，反正不重要，也得不到
 	
 			sscanf(stat_timestamp, "%s", time1); //将字符串类型转化为ISO 8601格式
 			sscanf(stat_timestamp, "%*s%s", time2);
