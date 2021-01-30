@@ -2098,7 +2098,7 @@ void thread_up(void) { //PUSH_DATA packet
         for (i = 0; i < nb_pkt; ++i) {
             p = &rxpkt[i]; //rxpkt[i]接收到的第i个数据包datagram
 
-            //由接收测试与在线解码比对可得到p->payload是PHYPayload，只从在线解码也可以得到
+            //由接收测试与在线解码比对可得到p->payload是PHYPayload的超集，只从在线解码也可以得到；p->payload比PHYPayload多出的bytes猜测与FEC有关
             /* Get mote information from current packet (addr, fcnt) */ //mote information：end device的信息
             /* FHDR - DevAddr */ //mote_addr: DevAddr[4 bytes]
 		    //字节序：Little Endian to Big Endian
@@ -2405,10 +2405,10 @@ void thread_up(void) { //PUSH_DATA packet
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
             buff_index += 9;
-			//rxpkt->payload使用base64加密: p->payload (PHYPayload) 到 data
+			//rxpkt->payload使用base64加密: p->payload 到 data
             j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
             
-            //printf("PHYPayload: "); //copy接收测试以确定发送的p->payload确实是PHYPayload (多了10bytes不知道为什么)
+            //printf("PHYPayload: "); //copy接收测试以确定发送的p->payload确实是PHYPayload的超集
             //for (j = 0; j < p->size; j++) {
             //    printf("%02X ", p->payload[j]);
             //}
