@@ -851,7 +851,7 @@ int main( int argc, char **argv )
             {
                 if( is_first == true )
                 {
-                    fprintf(log_file, "tmst,ftime,time,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,PHYPayload,data\n"); //修改后的表格头
+                    fprintf(log_file, "tmst,ftime,time,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data,PHYPayload\n"); //修改后的表格头
                     is_first = false;
                 }
                 log_csv( log_file, &databuf_up[12] );
@@ -1117,6 +1117,9 @@ static void log_csv(FILE * file, uint8_t * buf)
                 json_value_free( root_val );
                 return;
             }
+
+			fprintf(file, ",%s", json_value_get_string( val ) ); //data
+			            
             str = json_value_get_string( val );
             x = b64_to_bin( str, strlen( str ), payload, sizeof payload );
             if( x != size )
@@ -1130,9 +1133,6 @@ static void log_csv(FILE * file, uint8_t * buf)
             {
                 fprintf(file, "%02x", payload[j] ); //PHYPayload
             }
-			
-            fprintf(file, ",%s", json_value_get_string( val ) ); //data
-			
             /* End line */
             fprintf(file, "\n" );
         }
