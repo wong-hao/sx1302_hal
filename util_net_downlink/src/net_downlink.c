@@ -851,7 +851,7 @@ int main( int argc, char **argv )
             {
                 if( is_first == true )
                 {
-                    fprintf(log_file, "tmst,ftime,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data\n");
+                    fprintf(log_file, "tmst,ftime,time,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,PHYPayload,data\n"); //修改后的表格头
                     is_first = false;
                 }
                 log_csv( log_file, &databuf_up[12] );
@@ -943,6 +943,25 @@ static void log_csv(FILE * file, uint8_t * buf)
                     return;
                 }
                 fprintf(file, ",%u", (uint32_t)json_value_get_number( val ) );
+            } else {
+                fprintf(file, "," );
+            }
+
+            //get UTC time without GPS
+            val = json_object_get_value( rxpk, "time" );
+            if( val != NULL )
+            {
+
+                if( json_value_get_type( val ) != JSONString )
+                {
+                    printf( "ERROR: wrong type for tmst\n" );
+                    json_value_free( root_val );
+                    return;
+                }
+                //fprintf(file, ",%u", (uint32_t)json_value_get_number( val ) );
+                fprintf(file, ",%s", json_value_get_string( val ) );
+                //fprintf(file, ",%s", str );
+
             } else {
                 fprintf(file, "," );
             }
@@ -1111,9 +1130,11 @@ static void log_csv(FILE * file, uint8_t * buf)
             fprintf(file, "," );
             for( j = 0; j < size; j++ )
             {
-                fprintf(file, "%02x", payload[j] );
+                fprintf(file, "%02x", payload[j] ); //PHYPayload
             }
-
+			
+            fprintf(file, ",%s", json_value_get_string( val ) ); //data
+			
             /* End line */
             fprintf(file, "\n" );
         }

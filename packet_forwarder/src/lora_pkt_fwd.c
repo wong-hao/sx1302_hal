@@ -2429,11 +2429,21 @@ void thread_up(void) { //PUSH_DATA packet
 			//rxpkt->payload使用base64加密: p->payload (PHYPayload) 到 data
             j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
 
-			//printf("PHYPayload: "); //copy接收测试以确定发送的p->payload = PHYPayload
+			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
             //for(int count = 0; count < p->size; count++){
             //printf("%02X", p->payload[count]);
             //}
             //printf("\n");
+
+            //TODO: 照抄net_downlink里的代码以确定发送的p->payload = PHYPayload
+	        //uint8_t PHYPayload[500]; 
+			//printf("PHYPayload: ");
+            //int s = b64_to_bin((char *)(buff_up + buff_index), 341, PHYPayload, sizeof PHYPayload);
+            //for( int count = 0; count < 341; count++ )
+            //{
+            //    printf("%02x", PHYPayload[count] );
+            //}
+			//printf("\n");
             
             if (j>=0) {
                 buff_index += j;
