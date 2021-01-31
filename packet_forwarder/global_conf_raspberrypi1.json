@@ -75,7 +75,8 @@
     "gateway_conf": { //gateway parameters；所有prase的参数都存为全局变量
         "gateway_ID": "0016c001ff10d3f6", //raspberrypi1
         /* change with default server address/ports */
-        "server_address": "47.110.36.225", //private chirpstack server
+        //"server_address": "47.110.36.225", //private chirpstack server
+        "server_address": "localhost", //Utility: Downlink server
         "serv_port_up": 1700,
         "serv_port_down": 1700,
         /* adjust the following parameters for your network */
