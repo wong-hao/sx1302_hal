@@ -958,9 +958,7 @@ static void log_csv(FILE * file, uint8_t * buf)
                     json_value_free( root_val );
                     return;
                 }
-                //fprintf(file, ",%u", (uint32_t)json_value_get_number( val ) );
                 fprintf(file, ",%s", json_value_get_string( val ) );
-                //fprintf(file, ",%s", str );
 
             } else {
                 fprintf(file, "," );
