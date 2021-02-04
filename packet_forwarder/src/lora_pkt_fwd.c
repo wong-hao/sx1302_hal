@@ -1518,7 +1518,7 @@ int main(int argc, char ** argv)
 
     /* statistics variable */ //统计变量
     time_t t;
-    char stat_timestamp[24]; //UTC time
+    char stat_timestamp[24]; //NTP time
     float rx_ok_ratio;
     float rx_bad_ratio;
     float rx_nocrc_ratio;
@@ -1761,7 +1761,7 @@ int main(int argc, char ** argv)
 
         /* get timestamp for statistics */
         t = time(NULL);
-        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t)); //get UTC time without GPS
+        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t)); //get NTP time
 
         /* access upstream statistics, copy and reset them */ //上行数据统计
         pthread_mutex_lock(&mx_meas_up);
@@ -1854,7 +1854,7 @@ int main(int argc, char ** argv)
         }
 
         /* display a report */
-        printf("\n##### %s #####\n", stat_timestamp); //stat_timestamp：目前的格林威治时间
+        printf("\n##### %s #####\n", stat_timestamp); //stat_timestamp：目前的NTP时间
         printf("### [UPSTREAM] ###\n");
         printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
         printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
@@ -1995,7 +1995,7 @@ int main(int argc, char ** argv)
 void thread_up(void) { //PUSH_DATA packet
     int i, j, k; /* loop variables */
     unsigned pkt_in_dgram; /* nb on Lora packet in the current datagram */
-    char stat_timestamp[24]; //UTC time
+    char stat_timestamp[24]; //NTP time
     time_t t;
 
     /* allocate memory for packet fetching and processing */
@@ -2079,8 +2079,8 @@ void thread_up(void) { //PUSH_DATA packet
 
         /* get timestamp for statistics */ //时间戳：只有DEBUG才有用
         t = time(NULL);
-        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t)); //get UTC time without GPS
-        MSG_DEBUG(DEBUG_PKT_FWD, "\nCurrent time: %s \n", stat_timestamp); //stat_timestamp：目前的格林威治时间；只有DEBUG才输出这句
+        strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t)); //get NTP time
+        MSG_DEBUG(DEBUG_PKT_FWD, "\nCurrent time: %s \n", stat_timestamp); //stat_timestamp：目前的NTP时间；只有DEBUG才输出这句
 
         /* start composing datagram with the header */
         token_h = (uint8_t)rand(); /* random token */ //random token
@@ -2215,20 +2215,12 @@ void thread_up(void) { //PUSH_DATA packet
                 }
             }
 
-			//get UTC time without GPS
+			//transfer NTP time to UTC time without GPS
 
-			char time0[100] = "\"";
-			char time1[100];
-			char time2[100];
-			char time3[100] = ".000000000Z\""; //毫秒部分弄个固定值，反正不重要，也得不到
-	
-			sscanf(stat_timestamp, "%s", time1); //将字符串类型转化为ISO 8601格式
-			sscanf(stat_timestamp, "%*s%s", time2);
-            strcat(time0,time1);
-			strcat(time0,"T");
-			strcat(time0,time2);
-			strcat(time0,time3);
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"time\":%s", time0); //stat_timestamp是字符串类型，即使在这里成功插入了buff_up也会因为不是ISO 8601格式而不被NS接收，从而没有PUSH_ACK返回
+			char time0[100];
+            strftime(time0, sizeof time0, "\"%Y-%m-%dT%H:%M:%S.000000000Z\"", gmtime(&t)); //https://stackoverflow.com/a/63574158/12650926: setup UTC time from NTP server in C, fixed millisecond part (反正也没用)
+
+			j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"time\":%s", time0); //stat_timestamp是字符串类型，即使在这里成功插入了buff_up也会因为不是ISO 8601格式而不被NS接收，从而没有PUSH_ACK返回
             if (j > 0) {
                 buff_index += j;
             } else {
