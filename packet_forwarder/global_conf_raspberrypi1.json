@@ -15,7 +15,7 @@
             "enable": true, //包含了rx_enable与tx_enable
             "type": "SX1250",
             "single_input_mode": true,
-            "freq": 486600000, //RX frequency：与device发射频率越接近越好
+            "freq": 486600000, //RX frequency：与COTS节点CN470区域参数规范中频率计划 / 评估板发射频率，越接近越好
             "rssi_offset": -207.0,
             "rssi_tcomp": {"coeff_a": 0, "coeff_b": 0, "coeff_c": 20.41, "coeff_d": 2162.56, "coeff_e": 0},
             "tx_enable": true,
