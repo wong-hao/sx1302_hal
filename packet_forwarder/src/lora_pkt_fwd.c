@@ -2080,7 +2080,7 @@ void thread_up(void) { //PUSH_DATA packet
         /* get timestamp for statistics */ //时间戳：只有DEBUG才有用
         t = time(NULL);
         strftime(stat_timestamp, sizeof stat_timestamp, "%F %T %Z", gmtime(&t)); //get NTP time
-        MSG_DEBUG(DEBUG_PKT_FWD, "\nCurrent time: %s \n", stat_timestamp); //stat_timestamp：目前的NTP时间；只有DEBUG才输出这句
+        MSG_DEBUG(DEBUG_PKT_FWD, "\nCurrent time: %s \n", stat_timestamp); //stat_timestamp：目前的NTP时间；只有DEBUG才输出这句
 
         /* start composing datagram with the header */
         token_h = (uint8_t)rand(); /* random token */ //random token
