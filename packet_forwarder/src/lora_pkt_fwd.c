@@ -2990,7 +2990,7 @@ void thread_down(void) {
                 MSG("INFO: [down] a packet will be sent in \"immediate\" mode\n");
             } else { //不是imme但是tmst
                 sent_immediate = false;
-                val = json_object_get_value(txpk_obj,"tmst");
+                val = json_object_get_value(txpk_obj,"tmst"); //比thread_up的tmst多1,000,000：RX1 delay = 1 / RECEIVE_DELAY1 = 1s (LoRaWAN Regional Parameters)
                 if (val != NULL) {
                     /* TX procedure: send on timestamp value */
 				    //ClassA的txpkt.count_us直接prase得到
