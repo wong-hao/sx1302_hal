@@ -265,10 +265,10 @@ static uint32_t autoquit_threshold = 0; /* enable auto-quit after a number of no
 /* Just In Time TX scheduling */
 static struct jit_queue_s jit_queue[LGW_RF_CHAIN_NB];
 
-/* Gateway specificities */
+/* Gateway specificities */ //天线增益；parse_SX130x_configuration求得
 static int8_t antenna_gain = 0;
 
-/* TX capabilities */ //parse_SX130x_configuration求得；是concentrator用于发射的线路
+/* TX capabilities */ //parse_SX130x_configuration求得；是concentrator用于thread_jit发射downlink的线路
 static struct lgw_tx_gain_lut_s txlut[LGW_RF_CHAIN_NB]; /* TX gain table */ //txlut[i]代指SX130x_conf.radio_%i.tx_gain_lut对象 snprintf(param_name, sizeof param_name, "radio_%i.tx_gain_lut", i);
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
@@ -3075,7 +3075,7 @@ void thread_down(void) {
             }
             txpkt.freq_hz = (uint32_t)((double)(1.0e6) * json_value_get_number(val));
 
-            /* parse RF chain used for TX (mandatory) */
+            /* parse RF chain used for TX (mandatory) */ //radio_i
             val = json_object_get_value(txpk_obj,"rfch");
             if (val == NULL) {
                 MSG("WARNING: [down] no mandatory \"txpk.rfch\" object in JSON, TX aborted\n");
@@ -3273,8 +3273,8 @@ void thread_down(void) {
 
             /* check TX power before trying to queue packet, send a warning if not supported */ //在插入jit前查tx_gain_lut表看发射功率
             if (jit_result == JIT_ERROR_OK) {
-                i = get_tx_gain_lut_index(txpkt.rf_chain, txpkt.rf_power, &tx_lut_idx);
-                if ((i < 0) || (txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power != txpkt.rf_power)) {
+                i = get_tx_gain_lut_index(txpkt.rf_chain, txpkt.rf_power, &tx_lut_idx); //根据收到的rfch、powe查找发射表tx_gain_lut得到tx_lut_idx，只有RF power is not supported时才拿出来使用
+                if ((i < 0) || (txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power != txpkt.rf_power)) { //发射表里没找到powe对应的rf_power
                     /* this RF power is not supported, throw a warning, and use the closest lower power supported */
                     warning_result = JIT_ERROR_TX_POWER;
                     warning_value = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
