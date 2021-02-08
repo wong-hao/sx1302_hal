@@ -112,6 +112,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define UNIX_GPS_EPOCH_OFFSET 315964800 /* Number of seconds ellapsed between 01.Jan.1970 00:00:00
                                                                           and 06.Jan.1980 00:00:00 */ //UTC与GPS时间的差值
 
+#define UNIX_GPS_EPOCH_OFFSET_MILLISECOND 315964800000 //Transfer NTP time to GPS timestampe without GPS
+
 //'Beaconing parameters' in 'global.config'，如果global里面没有参数则默认使用这些
 #define DEFAULT_BEACON_FREQ_HZ      869525000
 #define DEFAULT_BEACON_FREQ_NB      1
@@ -1358,7 +1360,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
     buff_index = 12; /* 12-byte header */
 
     /* Put no JSON string if there is nothing to report */ //If no JSON is present (empty string), this means than no error occurred
-    if (error != JIT_ERROR_OK) { //有错误需要在json汇报
+    if (error != JIT_ERROR_OK) { //有错误需要在json汇报: 只有有错误时才会出现txpk_ack字样
         /* start of JSON structure */ //Downstream JSON data structure
         memcpy((void *)(buff_ack + buff_index), (void *)"{\"txpk_ack\":{", 13); //json object txpk_ack
         buff_index += 13;
@@ -2227,6 +2229,18 @@ void thread_up(void) { //PUSH_DATA packet
                 MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                 exit(EXIT_FAILURE);
             }
+
+			//Transfer NTP time to GPS timestampe without GPS
+			
+			uint64_t UNIXtimestamp = (unsigned)time(NULL); //get UNIX timestamp: https://stackoverflow.com/questions/11765301/how-do-i-get-the-unix-timestamp-in-c-as-an-int
+            uint64_t GPStimestamp = UNIXtimestamp*1000 - UNIX_GPS_EPOCH_OFFSET_MILLISECOND; //convert UNIX timestamp to GPS timestamp: 毫秒不要了，反正也不重要
+            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"tmms\":%llu", GPStimestamp);
+            if (j > 0) {
+                buff_index += j;
+            } else {
+                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                exit(EXIT_FAILURE);
+            }
 			
             /* Fine timestamp */
             if (p->ftime_received == true) {
@@ -3016,7 +3030,7 @@ void thread_down(void) {
                             MSG("WARNING: [down] no valid GPS time reference yet, impossible to send packet on specific GPS time, TX aborted\n");
                             json_value_free(root_val);
 
-                            /* send acknoledge datagram to server */
+                            /* send acknoledge datagram to server */ //TX_ACK packet
                             send_tx_ack(buff_down[1], buff_down[2], JIT_ERROR_GPS_UNLOCKED, 0);
                             continue;
                         }
@@ -3024,7 +3038,7 @@ void thread_down(void) {
                         MSG("WARNING: [down] GPS disabled, impossible to send packet on specific GPS time, TX aborted\n");
                         json_value_free(root_val);
 
-                        /* send acknoledge datagram to server */ //GPS_UNLOCKED
+                        /* send acknoledge datagram to server */ //TX_ACK packet: GPS_UNLOCKED
                         send_tx_ack(buff_down[1], buff_down[2], JIT_ERROR_GPS_UNLOCKED, 0);
                         continue; //跳过
                     }
@@ -3306,8 +3320,9 @@ void thread_down(void) {
                 pthread_mutex_unlock(&mx_meas_dw);
             }
 
-            /* Send acknoledge datagram to server */ //If no JSON is present (empty string), this means than no error occured
-            send_tx_ack(buff_down[1], buff_down[2], jit_result, warning_value);
+            /* Send acknoledge datagram to server */ //If no JSON is present (empty string), this means than no error occured; 解析PULL_RESP并加入 JiT 队列，发送 TX_ACK packet到 server
+            send_tx_ack(buff_down[1], buff_down[2], jit_result, warning_value); //same token as the PULL_RESP packet to acknowledge
+			//printf("INFO: [down] Enqueue successfully\n");
         }
     }
     MSG("\nINFO: End of downstream thread\n");
