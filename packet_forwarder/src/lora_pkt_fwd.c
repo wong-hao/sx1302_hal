@@ -3239,13 +3239,13 @@ void thread_down(void) {
                 continue;
             }
 			//txpkt->payload使用base64解密
-            i = b64_to_bin(str, strlen(str), txpkt.payload, sizeof txpkt.payload);
+            i = b64_to_bin(str, strlen(str), txpkt.payload, sizeof txpkt.payload); //与net_downlink相似，都是接收到data，故都用b64_to_bin
             if (i != txpkt.size) {
                 MSG("WARNING: [down] mismatch between .size and .data size once converter to binary\n");
             }
 
 			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定接收的txpkt.payload = PHYPayload
-            //for(unsigned count = 0; count < sizeof txpkt.payload; count++){
+            //for(uint16_t count = 0; count < txpkt.size; count++){
             //printf("%02X", txpkt.payload[count]);
             //}
             //printf("\n");

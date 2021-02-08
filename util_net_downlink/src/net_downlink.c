@@ -1121,7 +1121,7 @@ static void log_csv(FILE * file, uint8_t * buf)
 			fprintf(file, ",%s", json_value_get_string( val ) ); //data
 			            
             str = json_value_get_string( val );
-            x = b64_to_bin( str, strlen( str ), payload, sizeof payload );
+            x = b64_to_bin( str, strlen( str ), payload, sizeof payload ); //将接收到的data -> PHYPayload
             if( x != size )
             {
                 printf( "ERROR: mismatch between .size and .data size once converter to binary\n" );
