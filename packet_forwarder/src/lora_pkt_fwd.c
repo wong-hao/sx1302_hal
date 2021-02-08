@@ -3244,6 +3244,12 @@ void thread_down(void) {
                 MSG("WARNING: [down] mismatch between .size and .data size once converter to binary\n");
             }
 
+			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定接收的txpkt.payload = PHYPayload
+            //for(unsigned count = 0; count < sizeof txpkt.payload; count++){
+            //printf("%02X", txpkt.payload[count]);
+            //}
+            //printf("\n");
+
             /* free the JSON parse tree from memory */
             json_value_free(root_val);
 
