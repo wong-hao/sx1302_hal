@@ -2704,8 +2704,8 @@ void thread_down(void) {
     last_beacon_gps_time.tv_sec = 0; //秒
     last_beacon_gps_time.tv_nsec = 0; //毫秒
 
-    /* beacon packet parameters */
-    beacon_pkt.tx_mode = ON_GPS; /* send on PPS pulse */
+    /* beacon packet parameters */ //There are 2 cases for which we need to convert a GPS time to concentrator counter:
+    beacon_pkt.tx_mode = ON_GPS; /* send on PPS pulse */ //beacons transmission time is based on GPS clock, and the concentrator TX mode is configured as “ON_GPS” for accurate beacon transmission on GPS PPS event.
     beacon_pkt.rf_chain = 0; /* antenna A */
     beacon_pkt.rf_power = beacon_power;
     beacon_pkt.modulation = MOD_LORA;
@@ -2868,7 +2868,7 @@ void thread_down(void) {
                     MSG_DEBUG(DEBUG_BEACON, "GPS-next: %s", ctime(&time_unix));
                     }
 #endif
-
+                    //There are 2 cases for which we need to convert a GPS time to concentrator counter: as the JiT thread decides if a packet has to be peeked or not, based on its concentrator counter, we need to have the beacon packet counter set
                     /* convert GPS time to concentrator time, and set packet counter for JiT trigger */
                     lgw_gps2cnt(time_reference_gps, next_beacon_gps_time, &(beacon_pkt.count_us));
                     pthread_mutex_unlock(&mx_timeref);
@@ -2995,6 +2995,7 @@ void thread_down(void) {
                 continue;
             }
 
+            //NS早已知道device class，按需下发下面的一种
             /* Parse "immediate" tag, or target timestamp, or UTC time to be converted by GPS (mandatory) */  //解析txpk中前三个“immediate、tmst或tmms”以确定什么时候发送数据包
             i = json_object_get_boolean(txpk_obj,"imme"); /* can be 1 if true, 0 if false, or -1 if not a JSON boolean */
             if (i == 1) {
@@ -3020,7 +3021,7 @@ void thread_down(void) {
                         json_value_free(root_val);
                         continue; //跳过
                     }
-                    if (gps_enabled == true) { //CLassB必须要开启GPS
+                    if (gps_enabled == true) { //CLassB网关必须要开启GPS
                         pthread_mutex_lock(&mx_timeref);
                         if (gps_ref_valid == true) {
                             local_ref = time_reference_gps; //获得时间转换参考
@@ -3271,7 +3272,7 @@ void thread_down(void) {
             if (sent_immediate) {
                 txpkt.tx_mode = IMMEDIATE; //Class-C
             } else {
-                txpkt.tx_mode = TIMESTAMPED; //Note: even if a Class-B downlink is given with a GPS timestamp, the concentrator TX mode is configured as “TIMESTAMP”, and not “ON_GPS”.
+                txpkt.tx_mode = TIMESTAMPED; //Note: even if a Class-B downlink is given with a GPS timestamp, the concentrator TX mode is configured as “TIMESTAMP”, and not “ON_GPS”. So at the end, it is the counter value which will be used for transmission.
             }
 
             /* record measurement data */
