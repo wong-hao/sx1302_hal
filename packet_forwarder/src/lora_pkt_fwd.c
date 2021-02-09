@@ -2159,13 +2159,13 @@ void thread_up(void) { //PUSH_DATA packet
             if (pkt_in_dgram == 0) { //for循环的第一轮循环，即datagram里的第一个packet
                 buff_up[buff_index] = '{';
                 ++buff_index;
-            } else { //inter-packet separator //JSON up: {"rxpk":[{},...,{}]}，每个{}是一个packet，大多出现于crc_bad也可转发时
+            } else { //inter-packet separator //JSON up: {"rxpk":[{},...,{}]}，每个{}是一个packet，仅crc_bad或no_crc开启转发时才出现，因为一轮循环一个
                 buff_up[buff_index] = ',';
                 buff_up[buff_index+1] = '{';
                 buff_index += 2;				
-				//如JSON up: {"rxpk":[{"jver":1,"tmst":195151122,"chan":5,"rfch":1,"freq":476.400000,"mid": 2,"stat":1,"modu":"LORA","datr":"SF12BW125","codr":"4/5","rssis":-80,"lsnr":-0.8,"foff":507,"rssi":-77,"size":25,"data":"gQwgUBMAEwATAKGyw9TloaKjpKWmp6ipqg=="},
-									//{"jver":1,"tmst":195151172,"chan":7,"rfch":1,"freq":476.800000,"mid": 0,"stat":-1,"modu":"LORA","datr":"SF12BW125","codr":"4/5","rssis":-62,"lsnr":-8.8,"foff":25539,"rssi":-54,"size":25,"data":"gQwgUBMBE8CzgDEXWtQlqaKjoeDGovj6ww=="}]}
-            }
+				//如JSON up: {"rxpk":[{"jver":1,"tmst":446169143,"time":"2021-02-09T07:50:30.000000000Z","tmms":1296892230000,"chan":6,"rfch":1,"freq":487.500000,"mid":11,"stat":-1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-69,"lsnr":-8.0,"foff":-25197,"rssi":-62,"size":12,"data":"0HDMmwOoBABYRhst"},
+				                    //{"jver":1,"tmst":446169241,"time":"2021-02-09T07:50:30.000000000Z","tmms":1296892230000,"chan":3,"rfch":0,"freq":486.900000,"mid": 8,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-3,"lsnr":13.0,"foff":-208,"rssi":-2,"size":12,"data":"QHbECwCgBADOxhse"}]}
+			}
 
             /* JSON rxpk frame format version, 8 useful chars */ //Upstream JSON data structure
             j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, "\"jver\":%d", PROTOCOL_JSON_RXPK_FRAME_FORMAT );
@@ -2429,27 +2429,18 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-            /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
-            memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
-            buff_index += 9;
-			//rxpkt->payload使用base64加密: p->payload (PHYPayload) 到 data
-            j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
-
 			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
             //for(int count = 0; count < p->size; count++){
             //printf("%02X", p->payload[count]);
             //}
-            //printf("\n");
+            //printf("\n")
 
-            //TODO: 照抄net_downlink里的代码以确定发送的p->payload = PHYPayload
-	        //uint8_t PHYPayload[500]; 
-			//printf("PHYPayload: ");
-            //int s = b64_to_bin((char *)(buff_up + buff_index), 341, PHYPayload, sizeof PHYPayload);
-            //for( int count = 0; count < 341; count++ )
-            //{
-            //    printf("%02x", PHYPayload[count] );
-            //}
-			//printf("\n");
+            /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
+            memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
+            buff_index += 9;;
+            
+			//rxpkt->payload使用base64加密: p->payload (PHYPayload) 到 data
+            j = bin_to_b64(p->payload, p->size, (char *)(buff_up + buff_index), 341); /* 255 bytes = 340 chars in b64 + null char */
             
             if (j>=0) {
                 buff_index += j;
