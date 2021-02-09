@@ -1342,7 +1342,7 @@ static double difftimespec(struct timespec end, struct timespec beginning) { //�
     return x;
 }
 
-static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) { //TX_ACK packet: send acknoledge datagram to server
+static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) { //TX_ACK packet: send acknoledge datagram to server: jit_enqueue正常或相关错误、警告
     uint8_t buff_ack[ACK_BUFF_SIZE]; /* buffer to give feedback to server */
     int buff_index;
     int j;
@@ -3039,7 +3039,7 @@ void thread_down(void) {
                         MSG("WARNING: [down] GPS disabled, impossible to send packet on specific GPS time, TX aborted\n");
                         json_value_free(root_val);
 
-                        /* send acknoledge datagram to server */ //TX_ACK packet: GPS_UNLOCKED (未开启GPS)
+                        /* send acknoledge datagram to server */ //TX_ACK packet: GPS_UNLOCKED (未开启GPS); 说明GPS出问题统一用**UNLOCKED**代替
                         send_tx_ack(buff_down[1], buff_down[2], JIT_ERROR_GPS_UNLOCKED, 0);
                         continue; //跳过
                     }
