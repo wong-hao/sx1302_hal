@@ -3454,11 +3454,11 @@ void thread_jit(void) { //A JiT thread, which regularly checks if there is a pac
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 4: PARSE GPS MESSAGE AND KEEP GATEWAY IN SYNC ----------------- */
 
-static void gps_process_sync(void) { //GPS更新时间
+static void gps_process_sync(void) { //更新GPS时间参考
     struct timespec gps_time;
     struct timespec utc;
     uint32_t trig_tstamp; /* concentrator timestamp associated with PPM pulse */ //用于lgw_gps_sync的时间戳
-    int i = lgw_gps_get(&utc, &gps_time, NULL, NULL); //获得时间
+    int i = lgw_gps_get(&utc, &gps_time, NULL, NULL); //get UTC time、GPS time
 
     /* get GPS time for synchronization */
     if (i != LGW_GPS_SUCCESS) {
@@ -3468,14 +3468,14 @@ static void gps_process_sync(void) { //GPS更新时间
 
     /* get timestamp captured on PPM pulse  */
     pthread_mutex_lock(&mx_concent);
-    i = lgw_get_trigcnt(&trig_tstamp); //Get concentrator count
+    i = lgw_get_trigcnt(&trig_tstamp); //Get PPM pulse concentrator count
     pthread_mutex_unlock(&mx_concent);
     if (i != LGW_HAL_SUCCESS) {
         MSG("WARNING: [gps] failed to read concentrator timestamp\n");
         return;
     }
 
-    /* try to update time reference with the new GPS time & timestamp */
+    /* try to update time reference with the new GPS time & timestamp */ //根据concentrator count、UTC time与GPS time更新time_reference_gps
     pthread_mutex_lock(&mx_timeref);
     i = lgw_gps_sync(&time_reference_gps, trig_tstamp, utc, gps_time);
     pthread_mutex_unlock(&mx_timeref);
@@ -3484,7 +3484,7 @@ static void gps_process_sync(void) { //GPS更新时间
     }
 }
 
-static void gps_process_coords(void) { //更新地理位置
+static void gps_process_coords(void) { //更新GPS地理位置
     /* position variable */
     struct coord_s coord;
     struct coord_s gpserr;
