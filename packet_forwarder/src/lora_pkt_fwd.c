@@ -1342,7 +1342,7 @@ static double difftimespec(struct timespec end, struct timespec beginning) { //�
     return x;
 }
 
-static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) { //send acknoledge datagram to server: TX_ACK packet
+static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error, int32_t error_value) { //TX_ACK packet: send acknoledge datagram to server
     uint8_t buff_ack[ACK_BUFF_SIZE]; /* buffer to give feedback to server */
     int buff_index;
     int j;
@@ -1364,7 +1364,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
         /* start of JSON structure */ //Downstream JSON data structure
         memcpy((void *)(buff_ack + buff_index), (void *)"{\"txpk_ack\":{", 13); //json object txpk_ack
         buff_index += 13;
-        /* set downlink error/warning status in JSON structure */
+        /* set downlink error/warning status in JSON structure */ //判读是错误还是警告
         switch( error ) {
             case JIT_ERROR_TX_POWER:
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"warn\":", 7); //仅JIT_ERROR_TX_POWER为warning
@@ -1375,7 +1375,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
                 buff_index += 8;
                 break;
         }
-        /* set error/warning type in JSON structure */
+        /* set error/warning type in JSON structure */ //判断错误或警告的类型
         switch (error) {
             case JIT_ERROR_FULL:
             case JIT_ERROR_COLLISION_PACKET:
@@ -1414,7 +1414,7 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"TX_FREQ\"", 9);
                 buff_index += 9;
                 break;
-            case JIT_ERROR_TX_POWER: //如果error为JIT_ERROR_TX_POWER
+            case JIT_ERROR_TX_POWER:
                 memcpy((void *)(buff_ack + buff_index), (void *)"\"TX_POWER\"", 10);
                 buff_index += 10;
                 break;
@@ -1427,9 +1427,9 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error,
                 buff_index += 9;
                 break;
         }
-        /* set error/warning details in JSON structure */
+        /* set error/warning details in JSON structure */ //The requested power is not supported by the gateway, the power actually used is given in the value field
         switch (error) {
-            case JIT_ERROR_TX_POWER:
+            case JIT_ERROR_TX_POWER: //详细阐述发射功率警告的实际大小
                 j = snprintf((char *)(buff_ack + buff_index), ACK_BUFF_SIZE-buff_index, ",\"value\":%d", error_value);
                 if (j > 0) {
                     buff_index += j;
@@ -2896,7 +2896,7 @@ void thread_down(void) {
 
                     /* Insert beacon packet in JiT queue */ //TX scheduling，插入beacon到jit
                     pthread_mutex_lock(&mx_concent);
-                    lgw_get_instcnt(&current_concentrator_time);
+                    lgw_get_instcnt(&current_concentrator_time); //Get concentrator count
                     pthread_mutex_unlock(&mx_concent);
 					
 					//jit_result是错误类型
@@ -2923,7 +2923,7 @@ void thread_down(void) {
                         MSG_DEBUG(DEBUG_BEACON, "--> beacon queuing failed with %d\n", jit_result);
                         /* update stats */
                         pthread_mutex_lock(&mx_meas_dw);
-                        if (jit_result != JIT_ERROR_COLLISION_BEACON) { //只有这一种错误得到赦免
+                        if (jit_result != JIT_ERROR_COLLISION_BEACON) { //只有这一种错误得到赦免: Rejected because there was already a beacon planned in requested timeframe
                             meas_nb_beacon_rejected += 1;
                         }
                         pthread_mutex_unlock(&mx_meas_dw);
@@ -2995,7 +2995,7 @@ void thread_down(void) {
                 continue;
             }
 
-            //NS早已知道device class，按需下发下面的一种
+            //在NS上注册device时均默认ClassA，可勾选是否支持ClassB、ClassC: 所以一个设备只会接收到immediate、tmst或tmms里的一个；注意UTC time不出现在downstream中
             /* Parse "immediate" tag, or target timestamp, or UTC time to be converted by GPS (mandatory) */  //解析txpk中前三个“immediate、tmst或tmms”以确定什么时候发送数据包
             i = json_object_get_boolean(txpk_obj,"imme"); /* can be 1 if true, 0 if false, or -1 if not a JSON boolean */
             if (i == 1) {
@@ -3031,7 +3031,7 @@ void thread_down(void) {
                             MSG("WARNING: [down] no valid GPS time reference yet, impossible to send packet on specific GPS time, TX aborted\n");
                             json_value_free(root_val);
 
-                            /* send acknoledge datagram to server */ //TX_ACK packet
+                            /* send acknoledge datagram to server */ //TX_ACK packet: GPS_UNLOCKED (REFERENCE有错误)
                             send_tx_ack(buff_down[1], buff_down[2], JIT_ERROR_GPS_UNLOCKED, 0);
                             continue;
                         }
@@ -3039,21 +3039,21 @@ void thread_down(void) {
                         MSG("WARNING: [down] GPS disabled, impossible to send packet on specific GPS time, TX aborted\n");
                         json_value_free(root_val);
 
-                        /* send acknoledge datagram to server */ //TX_ACK packet: GPS_UNLOCKED
+                        /* send acknoledge datagram to server */ //TX_ACK packet: GPS_UNLOCKED (未开启GPS)
                         send_tx_ack(buff_down[1], buff_down[2], JIT_ERROR_GPS_UNLOCKED, 0);
                         continue; //跳过
                     }
 
                     /* Get GPS time from JSON */
-                    x2 = (uint64_t)json_value_get_number(val); //得到"tmms"的数值
+                    x2 = (uint64_t)json_value_get_number(val); //x2为"tmms"的数值
 
                     /* Convert GPS time from milliseconds to timespec */ //gps_tx为structure timespec
-                    x3 = modf((double)x2/1E3, &x4); //x4为整数部分，x3为小数部分
+                    x3 = modf((double)x2/1E3, &x4); //x2计算出: x4整数部分，x3小数部分
                     gps_tx.tv_sec = (time_t)x4; /* get seconds from integer part */
                     gps_tx.tv_nsec = (long)(x3 * 1E9); /* get nanoseconds from fractional part */
 
                     /* transform GPS time to timestamp */
-					//There are 2 cases for which we need to convert a GPS time to concentrator counter: - Class B downlink
+					//There are 2 cases for which we need to convert a GPS time to concentrator counter: - Class B downlink; So at the end, it is the counter value which will be used for transmission
                     //gps_tx -> txpkt.count_us
 					i = lgw_gps2cnt(local_ref, gps_tx, &(txpkt.count_us));
                     if (i != LGW_GPS_SUCCESS) {
@@ -3288,17 +3288,17 @@ void thread_down(void) {
 
             /* check TX frequency before trying to queue packet */ //在插入jit前查看发射频率
             if ((txpkt.freq_hz < tx_freq_min[txpkt.rf_chain]) || (txpkt.freq_hz > tx_freq_max[txpkt.rf_chain])) {
-                jit_result = JIT_ERROR_TX_FREQ;
+                jit_result = JIT_ERROR_TX_FREQ; //Rejected because requested frequency is not supported by TX RF chain
                 MSG("ERROR: Packet REJECTED, unsupported frequency - %u (min:%u,max:%u)\n", txpkt.freq_hz, tx_freq_min[txpkt.rf_chain], tx_freq_max[txpkt.rf_chain]);
             }
 
             /* check TX power before trying to queue packet, send a warning if not supported */ //在插入jit前查tx_gain_lut表看发射功率
             if (jit_result == JIT_ERROR_OK) {
-                i = get_tx_gain_lut_index(txpkt.rf_chain, txpkt.rf_power, &tx_lut_idx); //根据收到的rfch、powe查找发射表tx_gain_lut得到tx_lut_idx，只有RF power is not supported时才拿出来使用
+                i = get_tx_gain_lut_index(txpkt.rf_chain, txpkt.rf_power, &tx_lut_idx); //根据收到的rfch、powe查找发射表tx_gain_lut得到tx_lut_idx：tx_lut_idx只有RF power is not supported时才拿出来使用
                 if ((i < 0) || (txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power != txpkt.rf_power)) { //发射表里没找到powe对应的rf_power
                     /* this RF power is not supported, throw a warning, and use the closest lower power supported */
                     warning_result = JIT_ERROR_TX_POWER;
-                    warning_value = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
+                    warning_value = (int32_t)txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power; //The requested power is not supported by the gateway, the power actually used is given in the value field
                     printf("WARNING: Requested TX power is not supported (%ddBm), actual power used: %ddBm\n", txpkt.rf_power, warning_value);
                     txpkt.rf_power = txlut[txpkt.rf_chain].lut[tx_lut_idx].rf_power;
                 }
@@ -3307,9 +3307,9 @@ void thread_down(void) {
             /* insert packet to be sent into JIT queue */ //TX scheduling，注意beacon已经在上面被插入了
             if (jit_result == JIT_ERROR_OK) { //通过了上面的check TX frequency与check TX power
                 pthread_mutex_lock(&mx_concent);
-                lgw_get_instcnt(&current_concentrator_time); //So at the end, it is the counter value which will be used for transmission
+                lgw_get_instcnt(&current_concentrator_time); //Get concentrator count 
                 pthread_mutex_unlock(&mx_concent);
-                jit_result = jit_enqueue(&jit_queue[txpkt.rf_chain], current_concentrator_time, &txpkt, downlink_type); //根据downlink_type插入downlink CLASS A/B/C到JIT
+                jit_result = jit_enqueue(&jit_queue[txpkt.rf_chain], current_concentrator_time, &txpkt, downlink_type); //根据downlink_type插入downlink CLASS A/B/C到JIT；返回ERROR_OK或TOO_LATE	、TOO_EARLY、COLLISION_PACKET、COLLISION_BEACON
                 if (jit_result != JIT_ERROR_OK) { //执行jit_enqueue失败
                     printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
                 } else {
@@ -3371,13 +3371,13 @@ void thread_jit(void) { //A JiT thread, which regularly checks if there is a pac
             pthread_mutex_lock(&mx_concent);
             lgw_get_instcnt(&current_concentrator_time); //based on current concentrator internal time
             pthread_mutex_unlock(&mx_concent);
-            jit_result = jit_peek(&jit_queue[i], current_concentrator_time, &pkt_index); //checks if the queue contains a packet that must be passed immediately to the concentrator for transmission and returns corresponding index if any.
+            jit_result = jit_peek(&jit_queue[i], current_concentrator_time, &pkt_index); //The queue is always kept sorted on ascending timestamp order.; checks if the queue contains a packet that must be passed immediately to the concentrator for transmission and returns corresponding index if any.
 			//检查当前是否有报文需要发送到Concentrator
 			if (jit_result == JIT_ERROR_OK) { //the queue contains a packet that must be passed immediately to the concentrator for transmission and returns corresponding index if any
                         /* update beacon stats */
 			    //若有
                 if (pkt_index > -1) {
-                    jit_result = jit_dequeue(&jit_queue[i], pkt_index, &pkt, &pkt_type); //actually removes from the queue the packet at index given by peek function
+                    jit_result = jit_dequeue(&jit_queue[i], pkt_index, &pkt, &pkt_type); //The queue is always kept sorted on ascending timestamp order.; actually removes from the queue the packet at index given by peek function
 					if (jit_result == JIT_ERROR_OK) {
                         if (pkt_type == JIT_PKT_TYPE_BEACON) { //downlink packet type beacon
                             /* Compensate breacon frequency with xtal error */
@@ -3454,7 +3454,7 @@ void thread_jit(void) { //A JiT thread, which regularly checks if there is a pac
 /* -------------------------------------------------------------------------- */
 /* --- THREAD 4: PARSE GPS MESSAGE AND KEEP GATEWAY IN SYNC ----------------- */
 
-static void gps_process_sync(void) { //更新时间
+static void gps_process_sync(void) { //GPS更新时间
     struct timespec gps_time;
     struct timespec utc;
     uint32_t trig_tstamp; /* concentrator timestamp associated with PPM pulse */ //用于lgw_gps_sync的时间戳
@@ -3632,7 +3632,7 @@ void thread_valid(void) {
 
         /* calculate when the time reference was last updated */
         pthread_mutex_lock(&mx_timeref);
-        gps_ref_age = (long)difftime(time(NULL), time_reference_gps.systime); //thread_gps调用的gps_process_sync更新的reference
+        gps_ref_age = (long)difftime(time(NULL), time_reference_gps.systime); //thread_gps调用的gps_process_sync更新的reference: 检查GPS是否已经停止更新时间，并据此决定是否使用GPS时间作为基准时间
         //GPS时钟是否有效。系统和 GPS 时间差是否超出[0, GPS_REF_MAX_AGE]范围
 		if ((gps_ref_age >= 0) && (gps_ref_age <= GPS_REF_MAX_AGE)) {
             /* time ref is ok, validate and  */ //gps基准时间合理
