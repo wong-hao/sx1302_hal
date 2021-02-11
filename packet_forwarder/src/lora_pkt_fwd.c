@@ -2159,12 +2159,12 @@ void thread_up(void) { //PUSH_DATA packet
             if (pkt_in_dgram == 0) { //for循环的第一轮循环，即datagram里的第一个packet
                 buff_up[buff_index] = '{';
                 ++buff_index;
-            } else { //inter-packet separator //JSON up: {"rxpk":[{},...,{}]}，每个{}是一个packet，仅crc_bad或no_crc开启转发时才出现，因为一轮循环一个
+            } else { //inter-packet separator //JSON up: {"rxpk":[{},...,{}]}，每个{}是一个packet，大概率crc_bad或no_crc开启转发时出现
                 buff_up[buff_index] = ',';
                 buff_up[buff_index+1] = '{';
                 buff_index += 2;				
-				//如JSON up: {"rxpk":[{"jver":1,"tmst":446169143,"time":"2021-02-09T07:50:30.000000000Z","tmms":1296892230000,"chan":6,"rfch":1,"freq":487.500000,"mid":11,"stat":-1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-69,"lsnr":-8.0,"foff":-25197,"rssi":-62,"size":12,"data":"0HDMmwOoBABYRhst"},
-				                    //{"jver":1,"tmst":446169241,"time":"2021-02-09T07:50:30.000000000Z","tmms":1296892230000,"chan":3,"rfch":0,"freq":486.900000,"mid": 8,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-3,"lsnr":13.0,"foff":-208,"rssi":-2,"size":12,"data":"QHbECwCgBADOxhse"}]}
+				//JSON up: {"rxpk":[{"jver":1,"tmst":21762225,"time":"2021-02-11T15:43:12.000000000Z","tmms":1297093392000,"chan":4,"rfch":1,"freq":487.100000,"mid": 9,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-66,"lsnr":-7.2,"foff":23844,"rssi":-61,"size":18,"data":"QHbECwCAAAACG3rABSmarECY"},
+					              //{"jver":1,"tmst":21762336,"time":"2021-02-11T15:43:12.000000000Z","tmms":1297093392000,"chan":2,"rfch":0,"freq":486.700000,"mid": 8,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-3,"lsnr":13.2,"foff":-226,"rssi":-3,"size":18,"data":"QHbECwCAAAACG3rABSmarECY"}]}
 			}
 
             /* JSON rxpk frame format version, 8 useful chars */ //Upstream JSON data structure

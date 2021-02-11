@@ -851,7 +851,7 @@ int main( int argc, char **argv )
             {
                 if( is_first == true )
                 {
-                    fprintf(log_file, "tmst,ftime,time,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data,PHYPayload\n"); //修改后的表格头
+                    fprintf(log_file, "tmst,ftime,time,tmms,chan,rfch,freq,mid,stat,modu,datr,bw,codr,rssic,rssis,lsnr,size,data,PHYPayload\n"); //修改后的表格头
                     is_first = false;
                 }
                 log_csv( log_file, &databuf_up[12] );
@@ -969,11 +969,11 @@ static void log_csv(FILE * file, uint8_t * buf)
             val = json_object_get_value( rxpk, "tmms" );
             if( json_value_get_type( val ) != JSONNumber )
             {
-                printf( "ERROR: wrong type for tmst\n" );
+                printf( "ERROR: wrong type for tmms\n" );
                 json_value_free( root_val );
                 return;
             }
-            fprintf(file, "%u", (uint32_t)json_value_get_number( val ) );
+            fprintf(file, ",%llu", (uint64_t)json_value_get_number( val ) );
 
 
             val = json_object_get_value( rxpk, "chan" );
