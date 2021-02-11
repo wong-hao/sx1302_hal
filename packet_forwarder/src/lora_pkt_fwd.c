@@ -2217,7 +2217,7 @@ void thread_up(void) { //PUSH_DATA packet
                 }
             }
 
-			//transfer NTP time to UTC time without GPS
+			//Transfer NTP time to UTC time without GPS
 
 			char time0[100];
             strftime(time0, sizeof time0, "\"%Y-%m-%dT%H:%M:%S.000000000Z\"", gmtime(&t)); //https://stackoverflow.com/a/63574158/12650926: setup UTC time from NTP server in C, fixed millisecond part (反正也没用)

@@ -938,7 +938,7 @@ static void log_csv(FILE * file, uint8_t * buf)
 
                 if( json_value_get_type( val ) != JSONNumber )
                 {
-                    printf( "ERROR: wrong type for tmst\n" );
+                    printf( "ERROR: wrong type for ftime\n" );
                     json_value_free( root_val );
                     return;
                 }
@@ -947,14 +947,14 @@ static void log_csv(FILE * file, uint8_t * buf)
                 fprintf(file, "," );
             }
 
-            //get UTC time without GPS
+            //Transfer NTP time to UTC time without GPS
             val = json_object_get_value( rxpk, "time" );
             if( val != NULL )
             {
 
                 if( json_value_get_type( val ) != JSONString )
                 {
-                    printf( "ERROR: wrong type for tmst\n" );
+                    printf( "ERROR: wrong type for time\n" );
                     json_value_free( root_val );
                     return;
                 }
@@ -963,6 +963,18 @@ static void log_csv(FILE * file, uint8_t * buf)
             } else {
                 fprintf(file, "," );
             }
+
+
+            //Transfer NTP time to GPS timestampe without GPS
+            val = json_object_get_value( rxpk, "tmms" );
+            if( json_value_get_type( val ) != JSONNumber )
+            {
+                printf( "ERROR: wrong type for tmst\n" );
+                json_value_free( root_val );
+                return;
+            }
+            fprintf(file, "%u", (uint32_t)json_value_get_number( val ) );
+
 
             val = json_object_get_value( rxpk, "chan" );
             if( json_value_get_type( val ) != JSONNumber )
