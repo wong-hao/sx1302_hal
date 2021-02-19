@@ -1313,7 +1313,7 @@ static int parse_debug_configuration(const char * conf_file) {
     return 0;
 }
 
-static uint16_t crc16(const uint8_t * data, unsigned size) { //对发射的包进行crc检验
+static uint16_t crc16(const uint8_t * data, unsigned size) { //对txpkt进行crc检验
     const uint16_t crc_poly = 0x1021;
     const uint16_t init_val = 0x0000;
     uint16_t x = init_val;
@@ -2055,7 +2055,7 @@ void thread_up(void) { //PUSH_DATA packet
         nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt); //从Node接受最多NB_PKT_MAX个数据包，rxpkt pointer to an array of struct that will receive the packet metadata and payload pointers
         pthread_mutex_unlock(&mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
-            MSG("ERROR: [up] failed packet fetch, exiting\n");
+            MSG("ERROR: [up] failed packet fetch, exiting\n"); //同时进行两个lora_pkt_fwd报错
             exit(EXIT_FAILURE);
         }
 
@@ -2282,6 +2282,8 @@ void thread_up(void) { //PUSH_DATA packet
                     buff_index += 9;
                     exit(EXIT_FAILURE);
             }
+
+			//printf("  crc:		0x%04X\n", p->crc); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
 
             /* Packet modulation, 13-14 useful chars */
             if (p->modulation == MOD_LORA) {
@@ -2967,7 +2969,7 @@ void thread_down(void) {
 
             /* the datagram is a PULL_RESP */ //PULL_RESP packet
             buff_down[msg_len] = 0; /* add string terminator, just to be safe */
-            MSG("INFO: [down] PULL_RESP received  - token[%d:%d] :)\n", buff_down[1], buff_down[2]); /* very verbose */ //verbose：冗长
+            MSG("INFO: [down] PULL_RESP received  - token[%d:%d] :)\n", buff_down[1], buff_down[2]); /* very verbose */ //verbose：冗长; 显示token但不像ACK一样check
             printf("\nJSON down: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
 
             /* initialize TX struct and try to parse JSON */ //解析json结构
