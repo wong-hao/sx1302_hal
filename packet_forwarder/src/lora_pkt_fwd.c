@@ -2435,7 +2435,7 @@ void thread_up(void) { //PUSH_DATA packet
             //for(int count = 0; count < p->size; count++){
             //printf("%02X", p->payload[count]);
             //}
-            //printf("\n")
+            //printf("\n");
 
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
