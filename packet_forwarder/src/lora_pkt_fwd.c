@@ -2230,6 +2230,22 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
+            //Transfer NTP time to UTC time without GPS 方法二
+			//char time0[100] = "\"";
+			//char time1[100];
+			//char time2[100];
+			//char time3[100] = ".000000000Z\""; //毫秒部分弄个固定值，反正不重要，也得不到
+			
+			//sscanf(stat_timestamp, "%s", time1); //将字符串类型转化为ISO 8601格式
+			//sscanf(stat_timestamp, "%*s%s", time2);
+			//strcat(time0,time1);
+			//strcat(time0,"T");
+			//strcat(time0,time2);
+			//strcat(time0,time3);
+			//j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"time\":%s", time0); //stat_timestamp是字符串类型，即使在这里成功插入了buff_up也会因为不是ISO 8601格式而不被NS接收，从而没有PUSH_ACK返回
+
+
+
 			//Transfer NTP time to GPS timestampe without GPS
 			
 			uint64_t UNIXtimestamp = (unsigned)time(NULL); //get UNIX timestamp: https://stackoverflow.com/questions/11765301/how-do-i-get-the-unix-timestamp-in-c-as-an-int
