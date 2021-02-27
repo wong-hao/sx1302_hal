@@ -2278,7 +2278,7 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-            /* Packet status, 9-10 useful chars */ //CRC；通过接收检测程序可以发现可以通过p->crc输出crc16具体值例如0xD228
+            /* Packet status, 9-10 useful chars */ //根据直接得到的pkt.payload_crc_error值判断而来 (不进行crc16计算)
             switch (p->status) {
                 case STAT_CRC_OK:
                     memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":1", 9);
@@ -2299,7 +2299,7 @@ void thread_up(void) { //PUSH_DATA packet
                     exit(EXIT_FAILURE);
             }
 
-			//printf("  crc:		0x%04X\n", p->crc); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
+			//printf("  crc:		0x%04X\n", p->crc); //照抄test_loragw_hal_rx里的代码；是由直接得到的pkt.rx_crc16_value赋值而来 (如果crc16计算失败将放弃赋值：只有pkt.payload_crc_error=0才进行健全性计算检查)
 
             /* Packet modulation, 13-14 useful chars */
             if (p->modulation == MOD_LORA) {
