@@ -59,6 +59,42 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
+void lora_crc16_copy(const char data, int *crc) {
+    int next = 0;
+    next  =  (((data>>0)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1)                 )      ;
+    next += ((((data>>1)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<1 ) ;
+    next += ((((data>>2)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<2 ) ;
+    next += ((((data>>3)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<3 ) ;
+    next += ((((data>>4)&1) ^ ((*crc>>12)&1)                                  )<<4 ) ;
+    next += ((((data>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<5 ) ;
+    next += ((((data>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1))<<6 ) ;
+    next += ((((data>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1))<<7 ) ;
+    next += ((((*crc>>0)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<8 ) ;
+    next += ((((*crc>>1)&1) ^ ((*crc>>12)&1)                                  )<<9 ) ;
+    next += ((((*crc>>2)&1) ^ ((*crc>>13)&1)                                  )<<10) ;
+    next += ((((*crc>>3)&1) ^ ((*crc>>14)&1)                                  )<<11) ;
+    next += ((((*crc>>4)&1) ^ ((*crc>>15)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<12) ;
+    next += ((((*crc>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<13) ;
+    next += ((((*crc>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<14) ;
+    next += ((((*crc>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<15) ;
+    (*crc) = next;
+}
+
+
+
+uint16_t sx1302_lora_payload_crc_copy(const uint8_t * data, uint8_t size) {
+    int i;
+    int crc = 0;
+
+    for (i = 0; i < size; i++) {
+        lora_crc16_copy(data[i], &crc);
+    }
+
+    //printf("CRC16: 0x%02X 0x%02X (%X)\n", (uint8_t)(crc >> 8), (uint8_t)crc, crc);
+    return (uint16_t)crc;
+}
+
+
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = 1;
@@ -403,6 +439,15 @@ int main(int argc, char **argv)
                     printf("  rssi_chan:%.1f\n", rxpkt[i].rssic);
                     printf("  rssi_sig :%.1f\n", rxpkt[i].rssis);
                     printf("  crc:      0x%04X\n", rxpkt[i].crc);
+					
+					uint16_t payload_crc16_calc; //copy sx1302_parse函数
+					payload_crc16_calc = sx1302_lora_payload_crc_copy(rxpkt[i].payload, rxpkt[i].size);
+					if (payload_crc16_calc != rxpkt[i].crc) {
+						printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", rxpkt[i].crc, payload_crc16_calc);
+					} else {
+						printf("Payload CRC check OK (0x%04X)\n", rxpkt[i].crc);
+					}
+					
                     for (j = 0; j < rxpkt[i].size; j++) {
                         printf("%02X ", rxpkt[i].payload[j]);
                     }

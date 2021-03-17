@@ -152,6 +152,9 @@ static uint64_t lgwm = 0; /* Lora gateway MAC address */
 static char serv_addr[64] = STR(DEFAULT_SERVER); /* address of the server (host name or IPv4/IPv6) */
 static char serv_port_up[8] = STR(DEFAULT_PORT_UP); /* server port for upstream traffic */
 static char serv_port_down[8] = STR(DEFAULT_PORT_DW); /* server port for downstream traffic */
+static char between_addr[64] = STR(DEFAULT_SERVER); //另一个树莓派的地址
+static char between_port_up[8] = STR(DEFAULT_PORT_UP);  
+static char between_port_down[8] = STR(DEFAULT_PORT_DW);  //备用
 static int keepalive_time = DEFAULT_KEEPALIVE; /* send a PULL_DATA request every X seconds, negative = disabled */
 
 /* statistics collection configuration variables */ //统计，parse_gateway_configuration求得
@@ -164,6 +167,8 @@ static uint32_t net_mac_l; /* Least Significant Nibble, network order */ //后�
 /* network sockets */ //套接字，main求得
 static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
+static int sock_between_up; //转发给另一个树莓派使用，看做上行
+static int sock_between_down; //备用
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */ //parse_gateway_configuration求得
@@ -330,6 +335,42 @@ void thread_spectral_scan(void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+void lora_crc16_copy(const char data, int *crc) {
+    int next = 0;
+    next  =  (((data>>0)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1)                 )      ;
+    next += ((((data>>1)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<1 ) ;
+    next += ((((data>>2)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<2 ) ;
+    next += ((((data>>3)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<3 ) ;
+    next += ((((data>>4)&1) ^ ((*crc>>12)&1)                                  )<<4 ) ;
+    next += ((((data>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<5 ) ;
+    next += ((((data>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1))<<6 ) ;
+    next += ((((data>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1))<<7 ) ;
+    next += ((((*crc>>0)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<8 ) ;
+    next += ((((*crc>>1)&1) ^ ((*crc>>12)&1)                                  )<<9 ) ;
+    next += ((((*crc>>2)&1) ^ ((*crc>>13)&1)                                  )<<10) ;
+    next += ((((*crc>>3)&1) ^ ((*crc>>14)&1)                                  )<<11) ;
+    next += ((((*crc>>4)&1) ^ ((*crc>>15)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<12) ;
+    next += ((((*crc>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<13) ;
+    next += ((((*crc>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<14) ;
+    next += ((((*crc>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<15) ;
+    (*crc) = next;
+}
+
+
+
+uint16_t sx1302_lora_payload_crc_copy(const uint8_t * data, uint8_t size) {
+    int i;
+    int crc = 0;
+
+    for (i = 0; i < size; i++) {
+        lora_crc16_copy(data[i], &crc);
+    }
+
+    //printf("CRC16: 0x%02X 0x%02X (%X)\n", (uint8_t)(crc >> 8), (uint8_t)crc, crc);
+    return (uint16_t)crc;
+}
+
 
 static void usage( void ) //与命令行有关
 {
@@ -1097,6 +1138,24 @@ static int parse_gateway_configuration(const char * conf_file) {
         MSG("INFO: downstream port is configured to \"%s\"\n", serv_port_down);
     }
 
+	str = json_object_get_string(conf_obj, "between_address"); //另一个树莓派的地址
+    if (str != NULL) {
+        strncpy(between_addr, str, sizeof between_addr);
+        between_addr[sizeof between_addr - 1] = '\0'; /* ensure string termination */
+        MSG("INFO: between hostname or IP address is configured to \"%s\"\n", between_addr);
+    }
+
+    val = json_object_get_value(conf_obj, "between_port_up"); //serv_port_up
+    if (val != NULL) {
+        snprintf(between_port_up, sizeof between_port_up, "%u", (uint16_t)json_value_get_number(val));
+        MSG("INFO: between up port is configured to \"%s\"\n", between_port_up);
+    }
+    val = json_object_get_value(conf_obj, "between_port_down"); //serv_port_down
+    if (val != NULL) {
+        snprintf(between_port_down, sizeof between_port_down, "%u", (uint16_t)json_value_get_number(val));
+        MSG("INFO: between down port is configured to \"%s\"\n", between_port_down);
+    }
+
     /* get keep-alive interval (in seconds) for downstream (optional) */
     val = json_object_get_value(conf_obj, "keepalive_interval"); //keepalive_time
     if (val != NULL) {
@@ -1676,6 +1735,64 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(result);
+
+	 i = getaddrinfo(between_addr, between_port_up, &hints, &result); //转给另一个树莓派，当做上行
+	 if (i != 0) {
+		 MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", between_addr, between_port_up, gai_strerror(i));
+		 exit(EXIT_FAILURE);
+	 }
+	
+	 for (q=result; q!=NULL; q=q->ai_next) {
+		 sock_between_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+		 if (sock_between_up == -1) continue; /* try next field */
+		 else break; /* success, get out of loop */
+	 }
+	 if (q == NULL) {
+		 MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", between_addr, between_port_up);
+		 i = 1;
+		 for (q=result; q!=NULL; q=q->ai_next) {
+			 getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+			 MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
+			 ++i;
+		 }
+		 exit(EXIT_FAILURE);
+	 }
+	
+	 i = connect(sock_between_up, q->ai_addr, q->ai_addrlen);
+	 if (i != 0) {
+		 MSG("ERROR: [down] connect returned %s\n", strerror(errno));
+		 exit(EXIT_FAILURE);
+	 }
+	 freeaddrinfo(result);
+
+	 i = getaddrinfo(between_addr, between_port_down, &hints, &result); //备用
+	 if (i != 0) {
+		 MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", between_addr, between_port_down, gai_strerror(i));
+		 exit(EXIT_FAILURE);
+	 }
+	
+	 for (q=result; q!=NULL; q=q->ai_next) {
+		 sock_between_down = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
+		 if (sock_between_down == -1) continue; /* try next field */
+		 else break; /* success, get out of loop */
+	 }
+	 if (q == NULL) {
+		 MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", between_addr, between_port_down);
+		 i = 1;
+		 for (q=result; q!=NULL; q=q->ai_next) {
+			 getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
+			 MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
+			 ++i;
+		 }
+		 exit(EXIT_FAILURE);
+	 }
+	
+	 i = connect(sock_between_down, q->ai_addr, q->ai_addrlen);
+	 if (i != 0) {
+		 MSG("ERROR: [down] connect returned %s\n", strerror(errno));
+		 exit(EXIT_FAILURE);
+	 }
+	 freeaddrinfo(result);
 
     if (com_type == LGW_COM_SPI) {
         /* Board reset */ //执行reset_lgw.sh脚本
@@ -2299,8 +2416,16 @@ void thread_up(void) { //PUSH_DATA packet
                     exit(EXIT_FAILURE);
             }
 
-			//printf("  crc:		0x%04X\n", p->crc); //照抄test_loragw_hal_rx里的代码；是由直接得到的pkt.rx_crc16_value赋值而来 (如果crc16计算失败将放弃赋值：只有pkt.payload_crc_error=0才进行健全性计算检查)
+			//copy sx1302_parse函数
+            uint16_t payload_crc16_calc;
+			payload_crc16_calc = sx1302_lora_payload_crc_copy(p->payload, p->size);
+			if (payload_crc16_calc != p->crc) {
+				printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", p->crc, payload_crc16_calc); //p->crc是由直接得到的pkt.rx_crc16_value赋值而来 (如果crc16计算失败将放弃赋值：只有pkt.payload_crc_error=0才进行健全性计算检查)
+			} else {
+				printf("Payload CRC check OK (0x%04X)\n", p->crc);
+			}
 
+			
             /* Packet modulation, 13-14 useful chars */
             if (p->modulation == MOD_LORA) {
                 memcpy((void *)(buff_up + buff_index), (void *)",\"modu\":\"LORA\"", 14);
@@ -2447,11 +2572,11 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
-            //for(int count = 0; count < p->size; count++){
-            //printf("%02X", p->payload[count]);
-            //}
-            //printf("\n");
+			printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
+            for(int count = 0; count < p->size; count++){
+            printf("%02X", p->payload[count]);
+            }
+            printf("\n");
 
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
@@ -2560,6 +2685,7 @@ void thread_up(void) { //PUSH_DATA packet
 
         /* send datagram to server */ //发送上行datagrams
         send(sock_up, (void *)buff_up, buff_index, 0); //socket send
+        send(sock_between_up, (void *)buff_up, buff_index, 0);
         clock_gettime(CLOCK_MONOTONIC, &send_time); //得到发送时间
         pthread_mutex_lock(&mx_meas_up);
         meas_up_dgram_sent += 1; //PUSH_DATA datagrams sent
