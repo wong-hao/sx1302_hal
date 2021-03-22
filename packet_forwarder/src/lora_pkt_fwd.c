@@ -1668,6 +1668,7 @@ int main(int argc, char ** argv)
     memset(&hints, 0, sizeof hints); //hints
     hints.ai_family = AF_INET; //IPV4 /* WA: Forcing IPv4 as AF_UNSPEC(IPV4 and IPV6) makes connection on localhost to fail */
     hints.ai_socktype = SOCK_DGRAM; //UDP
+    //hints.ai_protocol取默认值0，系统会自动推演出应该使用UDP协议
 
     /* look for server address w/ upstream port */
     i = getaddrinfo(serv_addr, serv_port_up, &hints, &result); 
@@ -1680,7 +1681,7 @@ int main(int argc, char ** argv)
 
     /* try to open socket for upstream traffic */
     for (q=result; q!=NULL; q=q->ai_next) { //q指向result，q的属性都是上面getaddrinfo得到的；因为一个域名可能不止一个IP地址，所以，需要遍历res中的next，如下，是否还有下一个节点
-        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol); //创建套接字sock_up，ai_protocol默认为0自动推演
+        sock_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol); //创建套接字sock_up
         if (sock_up == -1) continue; /* try next field */
         else break; /* success, get out of loop */ //得到sock_up后跳出for循环，没有必要循环到结束条件q==NULL
     }
@@ -2680,6 +2681,14 @@ void thread_up(void) { //PUSH_DATA packet
         buff_up[buff_index] = '}'; //倒数第一层的}
         ++buff_index;
         buff_up[buff_index] = 0; /* add string terminator, for safety */
+
+        //printf("buff_index: %d\n", buff_index);
+
+		//printf("buff_up original format: "); //上行datagrams到底是orinigal还是json
+        //for(int count = 0; count < buff_index; count++){
+        //printf("%02X", buff_up[count]);
+        //}
+        //printf("\n");
 
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
