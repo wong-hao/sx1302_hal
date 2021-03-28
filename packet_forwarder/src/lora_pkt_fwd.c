@@ -2573,11 +2573,23 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-			printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
-            for(int count = 0; count < p->size; count++){
-            printf("%02X", p->payload[count]);
-            }
-            printf("\n");
+			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
+            //for(int count = 0; count < p->size; count++){
+            //printf("%02X", p->payload[count]);
+            //}
+            //printf("\n");			
+			
+			char buff[256] = "";
+			char payload1[256] = "";
+
+			for (uint16_t count = 0; count < p->size; count++) { //将uint8_t的payload转为char的payload1
+				
+			    sprintf(buff, "%02X", p->payload[count]); // 大写16进制，宽度占8个位置，左对齐
+				strcat(payload1, buff);
+			
+			}
+			printf("PHYPayload: %s\n",payload1);
+
 
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
