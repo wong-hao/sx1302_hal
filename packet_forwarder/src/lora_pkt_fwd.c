@@ -2739,13 +2739,12 @@ void thread_up(void) { //PUSH_DATA packet
         serv_addrs.sin_family = AF_INET;  //使用IPv4地址
         serv_addrs.sin_addr.s_addr = inet_addr("172.16.166.91");  //具体的IP地址
         serv_addrs.sin_port = htons(1680);  //端口
-
         int value = connect(sock_inter, (struct sockaddr*)&serv_addrs, sizeof(serv_addrs));
-        if (value != 0) {
-            printf("ERROR: [up] connect returned %s\n", strerror(errno));
-            exit(EXIT_FAILURE);
-        }
-        
+		if (value != 0) {
+			MSG("ERROR: [up] connect returned %s\n", strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+
         char buff_up_char[TX_BUFF_SIZE] = { 0 };
         Uint2Char(buff_up, buff_up_char, buff_index);  //To receive buff_up_fake
         send(sock_inter, buff_up_char, buff_index * 2, MSG_NOSIGNAL);
