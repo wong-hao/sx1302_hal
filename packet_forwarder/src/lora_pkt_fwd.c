@@ -336,6 +336,32 @@ void thread_spectral_scan(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
+void Char2Uint(char* array, uint8_t* array_uint, int length) {
+
+    for (int count = 0; count < 2 * length; count++) {
+        if (count % 2 == 0) {
+            char buff_char[256] = { 0 };
+            strncpy(buff_char, array + count, 2); //https://blog.csdn.net/zmhawk/article/details/44600075
+            buff_char[strlen(buff_char)] = '\0';
+            sscanf(buff_char, "%X", (int*)(&array_uint[count / 2])); //https://bbs.csdn.net/topics/391935459
+        }
+    }
+}
+
+void Uint2Char(uint8_t* array_uint, char* array, int length) {
+
+    char buff[256] = "";
+
+    for (uint16_t count = 0; count < length; count++) {
+
+        sprintf(buff, "%02X", array_uint[count]);
+        strcat(array, buff);
+
+    }
+
+}
+
+
 void lora_crc16_copy(const char data, int *crc) {
     int next = 0;
     next  =  (((data>>0)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1)                 )      ;
@@ -2573,22 +2599,22 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
-            //for(int count = 0; count < p->size; count++){
-            //printf("%02X", p->payload[count]);
-            //}
-            //printf("\n");			
+			printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
+            for(int count = 0; count < p->size; count++){
+            printf("%02X", p->payload[count]);
+            }
+            printf("\n");			
 			
-			char buff[256] = "";
-			char payload1[256] = "";
+			//char buff[256] = "";
+			//char payload1[256] = "";
 
-			for (uint16_t count = 0; count < p->size; count++) { //将uint8_t的payload转为char的payload1
+			//for (uint16_t count = 0; count < p->size; count++) { //将uint8_t的payload转为char的payload1
 				
-			    sprintf(buff, "%02X", p->payload[count]); // 大写16进制，宽度占8个位置，左对齐
-				strcat(payload1, buff);
+			   //sprintf(buff, "%02X", p->payload[count]); // 大写16进制，宽度占8个位置，左对齐
+				//strcat(payload1, buff);
 			
-			}
-			printf("PHYPayload: %s\n",payload1);
+			//}
+			//printf("PHYPayload: %s\n",payload1);
 
 
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
@@ -2693,20 +2719,43 @@ void thread_up(void) { //PUSH_DATA packet
         buff_up[buff_index] = '}'; //倒数第一层的}
         ++buff_index;
         buff_up[buff_index] = 0; /* add string terminator, for safety */
+		
 
-        //printf("buff_index: %d\n", buff_index);
+		//printf("buff_index: %d\n", buff_index);
 
-		//printf("buff_up original format: "); //上行datagrams到底是orinigal还是json
+		//printf("buff_up: \n"); //上行datagrams其实是buff_up而不是json
         //for(int count = 0; count < buff_index; count++){
         //printf("%02X", buff_up[count]);
         //}
         //printf("\n");
 
+
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
+
+        int sock_inter = socket(AF_INET, SOCK_STREAM, 0);
+        struct sockaddr_in serv_addrs;
+        memset(&serv_addrs, 0, sizeof(serv_addrs));  //每个字节都用0填充
+        serv_addrs.sin_family = AF_INET;  //使用IPv4地址
+        serv_addrs.sin_addr.s_addr = inet_addr("172.16.166.91");  //具体的IP地址
+        serv_addrs.sin_port = htons(1680);  //端口
+
+        int value = connect(sock_inter, (struct sockaddr*)&serv_addrs, sizeof(serv_addrs));
+        if (value != 0) {
+            printf("ERROR: [up] connect returned %s\n", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+        
+        char buff_up_char[TX_BUFF_SIZE] = { 0 };
+        Uint2Char(buff_up, buff_up_char, buff_index);  //To receive buff_up_fake
+        send(sock_inter, buff_up_char, buff_index * 2, MSG_NOSIGNAL);
+        memset(buff_up_char, 0, TX_BUFF_SIZE);  //重置缓冲区
+        //关闭套接字
+        close(sock_inter);
+
         /* send datagram to server */ //发送上行datagrams
-        send(sock_up, (void *)buff_up, buff_index, 0); //socket send
-        send(sock_between_up, (void *)buff_up, buff_index, 0);
+        //send(sock_up, (void *)buff_up, buff_index, 0); //socket send
+        //send(sock_between_up, (void *)buff_up, buff_index, 0);
         clock_gettime(CLOCK_MONOTONIC, &send_time); //得到发送时间
         pthread_mutex_lock(&mx_meas_up);
         meas_up_dgram_sent += 1; //PUSH_DATA datagrams sent
