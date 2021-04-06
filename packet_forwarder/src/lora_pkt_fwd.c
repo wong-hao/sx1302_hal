@@ -361,6 +361,22 @@ void Uint2Char(uint8_t* array_uint, char* array, int length) {
 
 }
 
+int FindSubchar(char* fullchar, char* subchar) {
+
+    char* buffer; //用于接受返回值
+
+    if ((buffer = strstr(fullchar, subchar)) == NULL)
+    { //说明没有要找的字符串
+        return -1;
+    }
+    else
+    {                                 //说明找到了那个字符串
+        return buffer - fullchar + 1; //cde的地址减去abcde的地址+1
+    }
+
+}
+
+
 
 void lora_crc16_copy(const char data, int *crc) {
     int next = 0;
@@ -2733,28 +2749,40 @@ void thread_up(void) { //PUSH_DATA packet
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
 
-        int sock_inter = socket(AF_INET, SOCK_STREAM, 0);
-        struct sockaddr_in serv_addrs;
-        memset(&serv_addrs, 0, sizeof(serv_addrs));  //每个字节都用0填充
-        serv_addrs.sin_family = AF_INET;  //使用IPv4地址
-        serv_addrs.sin_addr.s_addr = inet_addr("172.16.166.91");  //具体的IP地址
-        serv_addrs.sin_port = htons(1680);  //端口
-        int value = connect(sock_inter, (struct sockaddr*)&serv_addrs, sizeof(serv_addrs));
-		if (value != 0) {
-			MSG("ERROR: [up] connect returned %s\n", strerror(errno));
-			exit(EXIT_FAILURE);
-		}
-
-        char buff_up_char[TX_BUFF_SIZE] = { 0 };
-        Uint2Char(buff_up, buff_up_char, buff_index);  //To receive buff_up_fake
-        send(sock_inter, buff_up_char, buff_index * 2, MSG_NOSIGNAL);
-        memset(buff_up_char, 0, TX_BUFF_SIZE);  //重置缓冲区
-        //关闭套接字
-        close(sock_inter);
-
         /* send datagram to server */ //发送上行datagrams
-        //send(sock_up, (void *)buff_up, buff_index, 0); //socket send
-        //send(sock_between_up, (void *)buff_up, buff_index, 0);
+        printf("(char *)(buff_up + 12): %s\n",(char *)(buff_up + 12));
+		
+        char report[] = "rxpk";
+		if(FindSubchar((char *)(buff_up + 12),report) !=-1){ //不是stat report
+
+		    int sock_inter = socket(AF_INET, SOCK_STREAM, 0);
+	        struct sockaddr_in serv_addrs;
+	        memset(&serv_addrs, 0, sizeof(serv_addrs));  //每个字节都用0填充
+	        serv_addrs.sin_family = AF_INET;  //使用IPv4地址
+	        serv_addrs.sin_addr.s_addr = inet_addr("172.16.166.91");  //具体的IP地址
+	        serv_addrs.sin_port = htons(1680);  //端口
+	        int value = connect(sock_inter, (struct sockaddr*)&serv_addrs, sizeof(serv_addrs));
+			if (value != 0) {
+				MSG("ERROR: [up] connect returned %s\n", strerror(errno));
+				exit(EXIT_FAILURE);
+			}
+
+	        char buff_up_char[TX_BUFF_SIZE] = { 0 };
+	        Uint2Char(buff_up, buff_up_char, buff_index);  //To receive buff_up_fake
+			send(sock_inter, buff_up_char, buff_index * 2, MSG_NOSIGNAL);
+        	memset(buff_up_char, 0, TX_BUFF_SIZE);  //重置缓冲区
+        	//关闭套接字
+        	close(sock_inter);
+
+			//send(sock_between_up, (void *)buff_up, buff_index, 0);
+
+		}else{ //是stat report
+
+			send(sock_up, (void *)buff_up, buff_index, 0); //socket send
+
+		}
+		
+
         clock_gettime(CLOCK_MONOTONIC, &send_time); //得到发送时间
         pthread_mutex_lock(&mx_meas_up);
         meas_up_dgram_sent += 1; //PUSH_DATA datagrams sent
