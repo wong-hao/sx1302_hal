@@ -2460,14 +2460,24 @@ void thread_up(void) { //PUSH_DATA packet
             }
 
 			//copy sx1302_parse函数
-            uint16_t payload_crc16_calc;
-			payload_crc16_calc = sx1302_lora_payload_crc_copy(p->payload, p->size);
-			if (payload_crc16_calc != p->crc) {
-				printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", p->crc, payload_crc16_calc); //p->crc是由直接得到的pkt.rx_crc16_value赋值而来 (如果crc16计算失败将放弃赋值：只有pkt.payload_crc_error=0才进行健全性计算检查)
-			} else {
-				printf("Payload CRC check OK (0x%04X)\n", p->crc);
-			}
-
+            //uint16_t payload_crc16_calc;
+			//payload_crc16_calc = sx1302_lora_payload_crc_copy(p->payload, p->size);
+			//if (payload_crc16_calc != p->crc) {
+			//	printf("ERROR: Payload CRC16 check failed (got:0x%04X calc:0x%04X)\n", p->crc, payload_crc16_calc); //p->crc是由直接得到的pkt.rx_crc16_value赋值而来 (如果crc16计算失败将放弃赋值：只有pkt.payload_crc_error=0才进行健全性计算检查)
+			//} else {
+			//	printf("Payload CRC check OK (0x%04X)\n", p->crc);
+			//}
+			
+			//char crc_char[256]="";
+			//sprintf(crc_char,"%04X",p->crc);
+			//j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"crc\":%s", crc_char);
+            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"crc\":%u", p->crc);
+            if (j > 0) {
+                buff_index += j;
+            } else {
+                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                exit(EXIT_FAILURE);
+            }
 			
             /* Packet modulation, 13-14 useful chars */
             if (p->modulation == MOD_LORA) {
@@ -2615,23 +2625,11 @@ void thread_up(void) { //PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-			printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
-            for(int count = 0; count < p->size; count++){
-            printf("%02X", p->payload[count]);
-            }
-            printf("\n");			
-			
-			//char buff[256] = "";
-			//char payload1[256] = "";
-
-			//for (uint16_t count = 0; count < p->size; count++) { //将uint8_t的payload转为char的payload1
-				
-			   //sprintf(buff, "%02X", p->payload[count]); // 大写16进制，宽度占8个位置，左对齐
-				//strcat(payload1, buff);
-			
-			//}
-			//printf("PHYPayload: %s\n",payload1);
-
+			//printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
+            //for(int count = 0; count < p->size; count++){
+            //printf("%02X", p->payload[count]);
+            //}
+            //printf("\n");						
 
             /* Packet base64-encoded payload, 14-350 useful chars */ //base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
@@ -2749,9 +2747,7 @@ void thread_up(void) { //PUSH_DATA packet
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
 
-        /* send datagram to server */ //发送上行datagrams
-        printf("(char *)(buff_up + 12): %s\n",(char *)(buff_up + 12));
-		
+        /* send datagram to server */ //发送上行datagrams		
         char report[] = "rxpk";
 		if(FindSubchar((char *)(buff_up + 12),report) !=-1){ //不是stat report
 
