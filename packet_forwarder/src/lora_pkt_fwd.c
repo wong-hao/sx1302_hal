@@ -2471,7 +2471,8 @@ void thread_up(void) { //PUSH_DATA packet
 			//char crc_char[256]="";
 			//sprintf(crc_char,"%04X",p->crc);
 			//j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"crc\":%s", crc_char);
-            j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"crc\":%u", p->crc);
+            //直接发送%04x、%s都无法使得Network Server正确接收到附加的crc值，只能发送%u再在接收端处理为%04x
+			j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"crc\":%u", p->crc);
             if (j > 0) {
                 buff_index += j;
             } else {
