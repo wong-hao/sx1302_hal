@@ -2738,11 +2738,11 @@ void thread_up(void) { //PUSH_DATA packet
 
 		//printf("buff_index: %d\n", buff_index);
 
-		//printf("buff_up: \n"); //上行datagrams其实是buff_up而不是json
-        //for(int count = 0; count < buff_index; count++){
-        //printf("%02X", buff_up[count]);
-        //}
-        //printf("\n");
+		printf("buff_up: \n"); //上行datagrams其实是buff_up而不是json
+        for(int count = 0; count < buff_index; count++){
+        printf("%02X", buff_up[count]);
+        }
+        printf("\n");
 
 
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
@@ -2752,26 +2752,44 @@ void thread_up(void) { //PUSH_DATA packet
         char report[] = "rxpk";
 		if(FindSubchar((char *)(buff_up + 12),report) !=-1){ //不是stat report
 
-		    int sock_inter = socket(AF_INET, SOCK_STREAM, 0);
-	        struct sockaddr_in serv_addrs;
-	        memset(&serv_addrs, 0, sizeof(serv_addrs));  //每个字节都用0填充
-	        serv_addrs.sin_family = AF_INET;  //使用IPv4地址
-	        serv_addrs.sin_addr.s_addr = inet_addr("172.16.166.91");  //具体的IP地址
-	        serv_addrs.sin_port = htons(1680);  //端口
-	        int value = connect(sock_inter, (struct sockaddr*)&serv_addrs, sizeof(serv_addrs));
-			if (value != 0) {
-				MSG("ERROR: [up] connect returned %s\n", strerror(errno));
-				exit(EXIT_FAILURE);
-			}
+        //client_epoll
+		int sockfd;
+		struct sockaddr_in server_addr;
+		struct hostent *host;
+		host = gethostbyname("172.16.166.91");
 
-	        char buff_up_char[TX_BUFF_SIZE] = { 0 };
-	        Uint2Char(buff_up, buff_up_char, buff_index);  //To receive buff_up_fake
-			send(sock_inter, buff_up_char, buff_index * 2, MSG_NOSIGNAL);
-        	memset(buff_up_char, 0, TX_BUFF_SIZE);  //重置缓冲区
-        	//关闭套接字
-        	close(sock_inter);
+		int portnumber = 1680;
 
-			//send(sock_between_up, (void *)buff_up, buff_index, 0);
+		/* 客户程序开始建立 sockfd 描述符 */
+		if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+		{
+			fprintf(stderr, "Socket Error：%s\a\n", strerror(errno));
+			exit(1);
+		}
+		/* 客户程序填充服务端的资料 */
+		bzero(&server_addr, sizeof(server_addr));
+		server_addr.sin_family = AF_INET;
+		server_addr.sin_port = htons(portnumber);
+		server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+		/* 客户程序发起连接请求 */
+		if (connect(sockfd, (struct sockaddr *)(&server_addr), sizeof(struct sockaddr)) == -1)
+		{
+			fprintf(stderr, "Connect Error：%s\a\n", strerror(errno));
+			exit(1);
+		}
+
+
+        char buff_up_char[TX_BUFF_SIZE] = { 0 };
+		Uint2Char(buff_up, buff_up_char, buff_index);  //To receive buff_up_fake
+		if (write(sockfd, buff_up_char, buff_index * 2) == -1)
+		{
+			fprintf(stderr, "write Error：%s\n", strerror(errno));
+			exit(1);
+		}
+
+		close(sockfd);
+
+		//send(sock_between_up, (void *)buff_up, buff_index, 0);
 
 		}else{ //是stat report
 
