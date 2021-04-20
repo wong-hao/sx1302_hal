@@ -2653,6 +2653,8 @@ void thread_up(void) { //PUSH_DATA packet
             ++buff_index;
             ++pkt_in_dgram; //{"rxpk":[{},...,{}]}，每个{}是一个packet
 
+			if(pkt_in_dgram > 0) break;
+			
             //记录接收
             if (p->modulation == MOD_LORA) { //LoRa调制
                 /* Log nb of packets per channel, per SF */
@@ -2788,6 +2790,19 @@ void thread_up(void) { //PUSH_DATA packet
 		}
 
 		close(sockfd);
+
+		//client_block
+		//int sock_inter = socket(AF_INET, SOCK_STREAM, 0);
+		//struct sockaddr_in serv_addrs;
+		//memset(&serv_addrs, 0, sizeof(serv_addrs));  //每个字节都用0填充
+		//serv_addrs.sin_family = AF_INET;  //使用IPv4地址
+		//serv_addrs.sin_addr.s_addr = inet_addr("172.16.166.91");  //具体的IP地址
+		//serv_addrs.sin_port = htons(1680);	//端口
+		//int value = connect(sock_inter, (struct sockaddr*)&serv_addrs, sizeof(serv_addrs));
+		//if (value != 0) {
+		//	MSG("ERROR: [up] connect returned %s\n", strerror(errno));
+		//	exit(EXIT_FAILURE);
+		//}
 
 		//send(sock_between_up, (void *)buff_up, buff_index, 0);
 
