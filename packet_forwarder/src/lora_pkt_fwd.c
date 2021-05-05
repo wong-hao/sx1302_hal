@@ -345,18 +345,6 @@ void thread_spectral_scan(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-void Char2Uint(char* array, uint8_t* array_uint, int length) {
-
-    for (int count = 0; count < 2 * length; count++) {
-        if (count % 2 == 0) {
-            char buff_char[256] = { 0 };
-            strncpy(buff_char, array + count, 2); //https://blog.csdn.net/zmhawk/article/details/44600075
-            buff_char[strlen(buff_char)] = '\0';
-            sscanf(buff_char, "%X", (int*)(&array_uint[count / 2])); //https://bbs.csdn.net/topics/391935459
-        }
-    }
-}
-
 void Uint2Char(uint8_t* array_uint, char* array, int length) {
 
     char buff[256] = "";
@@ -386,31 +374,30 @@ int FindSubchar(char* fullchar, char* subchar) {
 }
 
 
-
-void lora_crc16_copy(const char data, int *crc) {
+void lora_crc16_copy(const char data, int* crc) {
     int next = 0;
-    next  =  (((data>>0)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1)                 )      ;
-    next += ((((data>>1)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<1 ) ;
-    next += ((((data>>2)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<2 ) ;
-    next += ((((data>>3)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<3 ) ;
-    next += ((((data>>4)&1) ^ ((*crc>>12)&1)                                  )<<4 ) ;
-    next += ((((data>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<5 ) ;
-    next += ((((data>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1))<<6 ) ;
-    next += ((((data>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1))<<7 ) ;
-    next += ((((*crc>>0)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<8 ) ;
-    next += ((((*crc>>1)&1) ^ ((*crc>>12)&1)                                  )<<9 ) ;
-    next += ((((*crc>>2)&1) ^ ((*crc>>13)&1)                                  )<<10) ;
-    next += ((((*crc>>3)&1) ^ ((*crc>>14)&1)                                  )<<11) ;
-    next += ((((*crc>>4)&1) ^ ((*crc>>15)&1) ^ ((*crc>>12)&1) ^ ((*crc>> 8)&1))<<12) ;
-    next += ((((*crc>>5)&1) ^ ((*crc>>13)&1) ^ ((*crc>> 9)&1)                 )<<13) ;
-    next += ((((*crc>>6)&1) ^ ((*crc>>14)&1) ^ ((*crc>>10)&1)                 )<<14) ;
-    next += ((((*crc>>7)&1) ^ ((*crc>>15)&1) ^ ((*crc>>11)&1)                 )<<15) ;
+    next = (((data >> 0) & 1) ^ ((*crc >> 12) & 1) ^ ((*crc >> 8) & 1));
+    next += ((((data >> 1) & 1) ^ ((*crc >> 13) & 1) ^ ((*crc >> 9) & 1)) << 1);
+    next += ((((data >> 2) & 1) ^ ((*crc >> 14) & 1) ^ ((*crc >> 10) & 1)) << 2);
+    next += ((((data >> 3) & 1) ^ ((*crc >> 15) & 1) ^ ((*crc >> 11) & 1)) << 3);
+    next += ((((data >> 4) & 1) ^ ((*crc >> 12) & 1)) << 4);
+    next += ((((data >> 5) & 1) ^ ((*crc >> 13) & 1) ^ ((*crc >> 12) & 1) ^ ((*crc >> 8) & 1)) << 5);
+    next += ((((data >> 6) & 1) ^ ((*crc >> 14) & 1) ^ ((*crc >> 13) & 1) ^ ((*crc >> 9) & 1)) << 6);
+    next += ((((data >> 7) & 1) ^ ((*crc >> 15) & 1) ^ ((*crc >> 14) & 1) ^ ((*crc >> 10) & 1)) << 7);
+    next += ((((*crc >> 0) & 1) ^ ((*crc >> 15) & 1) ^ ((*crc >> 11) & 1)) << 8);
+    next += ((((*crc >> 1) & 1) ^ ((*crc >> 12) & 1)) << 9);
+    next += ((((*crc >> 2) & 1) ^ ((*crc >> 13) & 1)) << 10);
+    next += ((((*crc >> 3) & 1) ^ ((*crc >> 14) & 1)) << 11);
+    next += ((((*crc >> 4) & 1) ^ ((*crc >> 15) & 1) ^ ((*crc >> 12) & 1) ^ ((*crc >> 8) & 1)) << 12);
+    next += ((((*crc >> 5) & 1) ^ ((*crc >> 13) & 1) ^ ((*crc >> 9) & 1)) << 13);
+    next += ((((*crc >> 6) & 1) ^ ((*crc >> 14) & 1) ^ ((*crc >> 10) & 1)) << 14);
+    next += ((((*crc >> 7) & 1) ^ ((*crc >> 15) & 1) ^ ((*crc >> 11) & 1)) << 15);
     (*crc) = next;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-uint16_t sx1302_lora_payload_crc_copy(const uint8_t * data, uint8_t size) {
+uint16_t sx1302_lora_payload_crc_copy(const uint8_t* data, uint8_t size) {
     int i;
     int crc = 0;
 
@@ -2852,6 +2839,41 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		}else{ //annotation: 是stat report
 
 			send(sock_up, (void *)buff_up, buff_index, 0); //annotation: socket send
+
+			/*测试代码
+			JSON_Value* root_val = NULL;			
+			JSON_Object* rxpk_obj = NULL;
+			JSON_Array* rxpk_array = NULL;
+			const char* str;
+			
+			root_val = json_parse_string_with_comments((const char*)(buff_up + 12));
+		    if (root_val == NULL) {
+		        MSG("WARNING: [down] invalid JSON, RX aborted\n");
+		    }
+			
+		    rxpk_obj = json_object_get_object(json_value_get_object(root_val), "rxpk");
+            if (rxpk_obj == NULL) {
+                MSG("WARNING: [down] no \"rxpk\" object in JSON, RX aborted\n");
+            }
+
+			rxpk_array = json_object_get_array(json_value_get_object(root_val),"rxpk");
+			if (rxpk_array == NULL) {
+                MSG("WARNING: [down] no \"rxpk\" array in JSON, RX aborted\n");
+            }
+			
+			str = json_object_get_string(rxpk_obj, "data");
+		    if (str == NULL) {
+            MSG("WWARNING: [down] no mandatory \"rxpk.data\" object in JSON, RX aborted\n");
+            }
+		    printf("data_up: %s\n", str);
+
+		    str = json_array_get_string(rxpk_array, 0);
+		    if (str == NULL) {
+            MSG("WWARNING: [down] no mandatory \"rxpk.data\" object in JSON, RX aborted\n");
+            }
+		    printf("data_up: %s\n", str);
+
+		    */
 
 		}
 		
