@@ -2783,7 +2783,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		int sockfd;
 		struct sockaddr_in server_addr;
 		struct hostent *host;
-		host = gethostbyname("172.16.166.91");
+		host = gethostbyname("172.16.166.240");
 
 		int portnumber = 1680;
 
@@ -2838,43 +2838,44 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		
 		}else{ //annotation: 是stat report
 
+			/*测试代码
 			send(sock_up, (void *)buff_up, buff_index, 0); //annotation: socket send
 
-			/*测试代码
 			JSON_Value* root_val = NULL;			
-			JSON_Object* rxpk_obj = NULL;
+			JSON_Object* first_obj = NULL;
 			JSON_Array* rxpk_array = NULL;
 			const char* str;
+			JSON_Value *val = NULL;
 			
 			root_val = json_parse_string_with_comments((const char*)(buff_up + 12));
 		    if (root_val == NULL) {
 		        MSG("WARNING: [down] invalid JSON, RX aborted\n");
 		    }
-			
-		    rxpk_obj = json_object_get_object(json_value_get_object(root_val), "rxpk");
-            if (rxpk_obj == NULL) {
-                MSG("WARNING: [down] no \"rxpk\" object in JSON, RX aborted\n");
-            }
 
 			rxpk_array = json_object_get_array(json_value_get_object(root_val),"rxpk");
 			if (rxpk_array == NULL) {
                 MSG("WARNING: [down] no \"rxpk\" array in JSON, RX aborted\n");
             }
+
+			first_obj = json_array_get_object(rxpk_array, 0);
+			if (first_obj == NULL) {
+                MSG("WARNING: [down] no object in JSON, RX aborted\n");
+            }
 			
-			str = json_object_get_string(rxpk_obj, "data");
-		    if (str == NULL) {
+			str = json_object_get_string(first_obj, "data");
+			if (str == NULL) {
             MSG("WWARNING: [down] no mandatory \"rxpk.data\" object in JSON, RX aborted\n");
             }
 		    printf("data_up: %s\n", str);
 
-		    str = json_array_get_string(rxpk_array, 0);
-		    if (str == NULL) {
-            MSG("WWARNING: [down] no mandatory \"rxpk.data\" object in JSON, RX aborted\n");
+		    val = json_object_get_value(first_obj,"stat");
+			if (val == NULL) {
+            MSG("WWARNING: [down] no mandatory \"rxpk.stat\" object in JSON, RX aborted\n");
+            }else{
+            printf("stat: %d\n", (int)json_value_get_number(val));
             }
-		    printf("data_up: %s\n", str);
-
 		    */
-
+			
 		}
 		
 
