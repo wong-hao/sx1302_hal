@@ -2862,6 +2862,8 @@ void thread_up(void) { //annotation: PUSH_DATA packet
                 MSG("WARNING: [down] no object in JSON, RX aborted\n");
             }
 			
+			json_object_set_string(first_obj, "data", "John Smith");
+
 			str = json_object_get_string(first_obj, "data");
 			if (str == NULL) {
             MSG("WWARNING: [down] no mandatory \"rxpk.data\" object in JSON, RX aborted\n");
