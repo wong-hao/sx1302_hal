@@ -358,22 +358,6 @@ void Uint2Char(uint8_t* array_uint, char* array, int length) {
 
 }
 
-int FindSubchar(char* fullchar, char* subchar) {
-
-    char* buffer; //用于接受返回值
-
-    if ((buffer = strstr(fullchar, subchar)) == NULL)
-    { //说明没有要找的字符串
-        return -1;
-    }
-    else
-    {                                 //说明找到了那个字符串
-        return buffer - fullchar + 1; //cde的地址减去abcde的地址+1
-    }
-
-}
-
-
 void lora_crc16_copy(const char data, int* crc) {
     int next = 0;
     next = (((data >> 0) & 1) ^ ((*crc >> 12) & 1) ^ ((*crc >> 8) & 1));
@@ -2776,8 +2760,14 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 
 
         /* send datagram to server */ //annotation: 发送上行datagrams		
-        char report[] = "rxpk";
-		if(FindSubchar((char *)(buff_up + 12),report) !=-1){ //annotation: 不是stat report
+		JSON_Value* root_val = NULL;			
+		JSON_Object* stat_obj = NULL;
+		root_val = json_parse_string_with_comments((const char*)(buff_up + 12));
+		if (root_val == NULL) {
+			MSG("WARNING: [down] invalid JSON, RX aborted\n");
+		}
+		stat_obj = json_object_get_object(json_value_get_object(root_val), "stat");
+		if (stat_obj == NULL) { //annotation: 不是stat report
 
         //annotation: client_epoll
 		int sockfd;
@@ -2808,7 +2798,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 
         char buff_up_char[TX_BUFF_SIZE] = { 0 };
 		Uint2Char(buff_up, buff_up_char, buff_index);  //annotation: To receive buff_up_fake
-		if (write(sockfd, buff_up_char, buff_index * 2) == -1)
+		if (write(sockfd, buff_up_char, buff_index * 2) == -1) //write 是高级版的 send
 		{
 			fprintf(stderr, "write Error：%s\n", strerror(errno));
 			exit(1);
@@ -2838,8 +2828,9 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		
 		}else{ //annotation: 是stat report
 
-			/*测试代码
 			send(sock_up, (void *)buff_up, buff_index, 0); //annotation: socket send
+
+			/*测试代码
 
 			JSON_Value* root_val = NULL;			
 			JSON_Object* first_obj = NULL;
