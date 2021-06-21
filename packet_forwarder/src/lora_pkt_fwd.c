@@ -2756,10 +2756,11 @@ void thread_up(void) { //annotation: PUSH_DATA packet
         printf("\n");
 		*/
 
-        printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
+        printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */ //跳过12-byte header，将后面的uint值强制转换为char
 
 
         /* send datagram to server */ //annotation: 发送上行datagrams		
+
 		JSON_Value* root_val = NULL;			
 		JSON_Object* stat_obj = NULL;
 		root_val = json_parse_string_with_comments((const char*)(buff_up + 12));
@@ -2773,7 +2774,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		int sockfd;
 		struct sockaddr_in server_addr;
 		struct hostent *host;
-		host = gethostbyname("172.16.166.240");
+		host = gethostbyname("172.16.164.195");
 
 		int portnumber = 1680;
 
@@ -2831,7 +2832,6 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 			send(sock_up, (void *)buff_up, buff_index, 0); //annotation: socket send
 
 			/*测试代码
-
 			JSON_Value* root_val = NULL;			
 			JSON_Object* first_obj = NULL;
 			JSON_Array* rxpk_array = NULL;
@@ -2842,25 +2842,21 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		    if (root_val == NULL) {
 		        MSG("WARNING: [down] invalid JSON, RX aborted\n");
 		    }
-
 			rxpk_array = json_object_get_array(json_value_get_object(root_val),"rxpk");
 			if (rxpk_array == NULL) {
                 MSG("WARNING: [down] no \"rxpk\" array in JSON, RX aborted\n");
             }
-
 			first_obj = json_array_get_object(rxpk_array, 0);
 			if (first_obj == NULL) {
                 MSG("WARNING: [down] no object in JSON, RX aborted\n");
             }
 			
 			json_object_set_string(first_obj, "data", "John Smith");
-
 			str = json_object_get_string(first_obj, "data");
 			if (str == NULL) {
             MSG("WWARNING: [down] no mandatory \"rxpk.data\" object in JSON, RX aborted\n");
             }
 		    printf("data_up: %s\n", str);
-
 		    val = json_object_get_value(first_obj,"stat");
 			if (val == NULL) {
             MSG("WWARNING: [down] no mandatory \"rxpk.stat\" object in JSON, RX aborted\n");
@@ -2870,8 +2866,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		    */
 			
 		}
-		
-
+			
         clock_gettime(CLOCK_MONOTONIC, &send_time); //annotation: 得到发送时间
         pthread_mutex_lock(&mx_meas_up);
         meas_up_dgram_sent += 1; //annotation: PUSH_DATA datagrams sent
