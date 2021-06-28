@@ -155,12 +155,6 @@ static char serv_addr[64] = STR(DEFAULT_SERVER); /* address of the server (host 
 static char serv_port_up[8] = STR(DEFAULT_PORT_UP); /* server port for upstream traffic */
 static char serv_port_down[8] = STR(DEFAULT_PORT_DW); /* server port for downstream traffic */
 
-/*测试代码
-static char between_addr[64] = STR(DEFAULT_SERVER); //annotation: 另一个树莓派的地址
-static char between_port_up[8] = STR(DEFAULT_PORT_UP);  
-static char between_port_down[8] = STR(DEFAULT_PORT_DW);
-*/
-
 static int keepalive_time = DEFAULT_KEEPALIVE; /* send a PULL_DATA request every X seconds, negative = disabled */
 
 /* statistics collection configuration variables */ //annotation: 统计，parse_gateway_configuration求得
@@ -173,11 +167,6 @@ static uint32_t net_mac_l; /* Least Significant Nibble, network order */ //annot
 /* network sockets */ //annotation: 套接字，main求得
 static int sock_up; /* socket for upstream traffic */
 static int sock_down; /* socket for downstream traffic */
-
-/*测试代码
-static int sock_between_up; //annotation: 转发给另一个树莓派使用，看做上行
-static int sock_between_down; //annotation: 备用
-*/
 
 /* network protocol variables */
 static struct timeval push_timeout_half = {0, (PUSH_TIMEOUT_MS * 500)}; /* cut in half, critical for throughput */ //annotation: parse_gateway_configuration求得
@@ -345,6 +334,8 @@ void thread_spectral_scan(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
+#define DEBUG_HERE 0
+
 void Uint2Char(uint8_t* array_uint, char* array, int length) {
 
     char buff[256] = "";
@@ -403,7 +394,7 @@ static void usage( void ) //annotation: 与命令行有关
     printf(" -c <filename>  use config file other than 'global_conf.json'\n");
     printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 	
-	/*测试代码
+	/* annotation
 	pi@raspberrypi:~/gw1302s/bin $ ./lora_pkt_fwd -h
 	~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	Version: 2.0.1;
@@ -1163,25 +1154,6 @@ static int parse_gateway_configuration(const char * conf_file) {
         MSG("INFO: downstream port is configured to \"%s\"\n", serv_port_down);
     }
 
-/*测试代码
-	str = json_object_get_string(conf_obj, "between_address"); //annotation: 另一个树莓派的地址
-    if (str != NULL) {
-        strncpy(between_addr, str, sizeof between_addr);
-        between_addr[sizeof between_addr - 1] = '\0'; 
-        MSG("INFO: between hostname or IP address is configured to \"%s\"\n", between_addr);
-    }
-
-    val = json_object_get_value(conf_obj, "between_port_up"); //annotation: serv_port_up
-    if (val != NULL) {
-        snprintf(between_port_up, sizeof between_port_up, "%u", (uint16_t)json_value_get_number(val));
-        MSG("INFO: between up port is configured to \"%s\"\n", between_port_up);
-    }
-    val = json_object_get_value(conf_obj, "between_port_down"); //annotation: serv_port_down
-    if (val != NULL) {
-        snprintf(between_port_down, sizeof between_port_down, "%u", (uint16_t)json_value_get_number(val));
-        MSG("INFO: between down port is configured to \"%s\"\n", between_port_down);
-    }
-*/
     /* get keep-alive interval (in seconds) for downstream (optional) */
     val = json_object_get_value(conf_obj, "keepalive_interval"); //annotation: keepalive_time
     if (val != NULL) {
@@ -1619,7 +1591,7 @@ int main(int argc, char ** argv)
         {
         case 'h': 
 
-			/*测试代码
+			/*annotation
 			./lora_pkt_fwd -h
 			*/
 			
@@ -1629,7 +1601,7 @@ int main(int argc, char ** argv)
 
         case 'c': 
 
-			/*测试代码
+			/*annotation
 			./lora_pkt_fwd -c global_conf.json
 			*/
 			
@@ -1772,66 +1744,6 @@ int main(int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(result);
-
-	/*测试代码
-	 i = getaddrinfo(between_addr, between_port_up, &hints, &result); //annotation: 转给另一个树莓派，当做上行
-	 if (i != 0) {
-		 MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", between_addr, between_port_up, gai_strerror(i));
-		 exit(EXIT_FAILURE);
-	 }
-	
-	 for (q=result; q!=NULL; q=q->ai_next) {
-		 sock_between_up = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
-		 if (sock_between_up == -1) continue; 
-		 else break; 
-	 }
-	 if (q == NULL) {
-		 MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", between_addr, between_port_up);
-		 i = 1;
-		 for (q=result; q!=NULL; q=q->ai_next) {
-			 getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-			 MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
-			 ++i;
-		 }
-		 exit(EXIT_FAILURE);
-	 }
-	
-	 i = connect(sock_between_up, q->ai_addr, q->ai_addrlen);
-	 if (i != 0) {
-		 MSG("ERROR: [down] connect returned %s\n", strerror(errno));
-		 exit(EXIT_FAILURE);
-	 }
-	 freeaddrinfo(result);
-
-	 i = getaddrinfo(between_addr, between_port_down, &hints, &result); //备用
-	 if (i != 0) {
-		 MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", between_addr, between_port_down, gai_strerror(i));
-		 exit(EXIT_FAILURE);
-	 }
-	
-	 for (q=result; q!=NULL; q=q->ai_next) {
-		 sock_between_down = socket(q->ai_family, q->ai_socktype,q->ai_protocol);
-		 if (sock_between_down == -1) continue; 
-		 else break; 
-	 }
-	 if (q == NULL) {
-		 MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", between_addr, between_port_down);
-		 i = 1;
-		 for (q=result; q!=NULL; q=q->ai_next) {
-			 getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-			 MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
-			 ++i;
-		 }
-		 exit(EXIT_FAILURE);
-	 }
-	
-	 i = connect(sock_between_down, q->ai_addr, q->ai_addrlen);
-	 if (i != 0) {
-		 MSG("ERROR: [down] connect returned %s\n", strerror(errno));
-		 exit(EXIT_FAILURE);
-	 }
-	 freeaddrinfo(result);
-	*/
 	
     if (com_type == LGW_COM_SPI) {
         /* Board reset */ //annotation: 执行reset_lgw.sh脚本
@@ -2320,7 +2232,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
                 buff_up[buff_index+1] = '{';
                 buff_index += 2;				
 
-				/*测试代码
+				/* annotation
 				JSON up: {"rxpk":[{"jver":1,"tmst":21762225,"time":"2021-02-11T15:43:12.000000000Z","tmms":1297093392000,"chan":4,"rfch":1,"freq":487.100000,"mid": 9,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-66,"lsnr":-7.2,"foff":23844,"rssi":-61,"size":18,"data":"QHbECwCAAAACG3rABSmarECY"},
 					              {"jver":1,"tmst":21762336,"time":"2021-02-11T15:43:12.000000000Z","tmms":1297093392000,"chan":2,"rfch":0,"freq":486.700000,"mid": 8,"stat":1,"modu":"LORA","datr":"SF7BW125","codr":"4/5","rssis":-3,"lsnr":13.2,"foff":-226,"rssi":-3,"size":18,"data":"QHbECwCAAAACG3rABSmarECY"}]}
 				*/
@@ -2391,7 +2303,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 			
 			//annotation: 方法二 Transfer NTP time to UTC time without GPS 
 			
-			/*测试代码	
+			/* backup
 			char time0[100] = "\"";
 			char time1[100];
 			char time2[100];
@@ -2462,7 +2374,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 
 			//annotation: copy sx1302_parse函数
 
-			/*测试代码
+			/* backup
 			uint16_t payload_crc16_calc;
 			payload_crc16_calc = sx1302_lora_payload_crc_copy(p->payload, p->size);
 			if (payload_crc16_calc != p->crc) {
@@ -2472,7 +2384,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 			}
 			*/
 
-			/*测试代码
+			/* backup
 			char crc_char[256]="";
 			sprintf(crc_char,"%04X",p->crc);
 			j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"crc\":%s", crc_char);
@@ -2633,13 +2545,13 @@ void thread_up(void) { //annotation: PUSH_DATA packet
                 exit(EXIT_FAILURE);
             }
 
-			/*测试代码	
+#if	DEBUG_HERE
 			printf("PHYPayload: "); //照抄test_loragw_hal_rx里的代码以确定发送的p->payload = PHYPayload
             for(int count = 0; count < p->size; count++){
             printf("%02X", p->payload[count]);
             }
             printf("\n");						
-			*/
+#endif
 
             /* Packet base64-encoded payload, 14-350 useful chars */ //annotation: base64编码
             memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
@@ -2746,7 +2658,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
         ++buff_index;
         buff_up[buff_index] = 0; /* add string terminator, for safety */
 		
-		/*测试代码
+#if DEBUG_HERE
 		printf("buff_index: %d\n", buff_index);
 
 		printf("buff_up: \n"); //annotation: 上行datagrams其实是buff_up而不是json
@@ -2754,7 +2666,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
         printf("%02X", buff_up[count]);
         }
         printf("\n");
-		*/
+#endif
 
         printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */ //跳过12-byte header，将后面的uint值强制转换为char
 
@@ -2774,7 +2686,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		int sockfd;
 		struct sockaddr_in server_addr;
 		struct hostent *host;
-		host = gethostbyname("172.16.164.195");
+		host = gethostbyname("172.16.166.112");
 
 		int portnumber = 1680;
 
@@ -2809,7 +2721,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 
 		//annotation: client_block
 
-		/*测试代码
+		/* backup
 		int sock_inter = socket(AF_INET, SOCK_STREAM, 0);
 		struct sockaddr_in serv_addrs;
 		memset(&serv_addrs, 0, sizeof(serv_addrs));  //每个字节都用0填充
@@ -2823,7 +2735,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 		}
 		*/
 
-		/*测试代码
+		/*backup
 		send(sock_between_up, (void *)buff_up, buff_index, 0);
 		*/
 		
@@ -2831,7 +2743,7 @@ void thread_up(void) { //annotation: PUSH_DATA packet
 
 			send(sock_up, (void *)buff_up, buff_index, 0); //annotation: socket send
 
-			/*测试代码
+			/* backup
 			JSON_Value* root_val = NULL;			
 			JSON_Object* first_obj = NULL;
 			JSON_Array* rxpk_array = NULL;
@@ -3575,13 +3487,13 @@ void thread_down(void) {
                 MSG("WARNING: [down] mismatch between .size and .data size once converter to binary\n");
             }
 
-			/*测试代码
+#if DEBUG_HERE
 			printf("PHYPayload: "); //annotation: 照抄test_loragw_hal_rx里的代码以确定接收的txpkt.payload = PHYPayload
             for(uint16_t count = 0; count < txpkt.size; count++){
             printf("%02X", txpkt.payload[count]);
             }
             printf("\n");
-			*/
+#endif
 			
             /* free the JSON parse tree from memory */
             json_value_free(root_val);
